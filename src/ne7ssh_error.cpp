@@ -168,8 +168,8 @@ const char* Ne7sshError::pop (int32 channel)
   const char* result = 0;
   uint32 len;
 
-  if (!memberCount) return 0;
-  if (!lock()) return false;
+  if (!memberCount) return NULL;
+  if (!lock()) return NULL;
 
   for (i = 0; i < memberCount; i++)
   {
@@ -182,7 +182,7 @@ const char* Ne7sshError::pop (int32 channel)
   if (recID < 0)
   {
     unlock();
-    return 0;
+    return NULL;
   }
 
   if (result)
@@ -194,9 +194,9 @@ const char* Ne7sshError::pop (int32 channel)
   else 
   {
     unlock();
-    return 0;
+    return NULL;
   }
-  if (!unlock()) return false;
+  if (!unlock()) return NULL;
 
   return popedErr;
 }

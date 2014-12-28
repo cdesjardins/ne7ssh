@@ -615,9 +615,9 @@ const char* ne7ssh::read (int channel, bool do_lock)
   if (channel == -1)
   {
     errs->push (-1, "Bad channel: %i specified for reading.", channel);
-    return false;
+    return NULL;
   }
-  if (do_lock && !lock()) return false;
+  if (do_lock && !lock()) return NULL;
   for (i = 0; i < conCount; i++)
   {
     if (channel == connections[i]->getChannelNo())
@@ -625,13 +625,13 @@ const char* ne7ssh::read (int channel, bool do_lock)
       data = connections[i]->getReceived();
       if (data.size())
       {
-        if (do_lock && !unlock()) return false;
+        if (do_lock && !unlock()) return NULL;
         return ((const char*)connections[i]->getReceived().begin());
       }
     }
   }
-  if (do_lock && !unlock()) return false;
-  return 0;
+  if (do_lock && !unlock()) return NULL;
+  return NULL;
 }
 
 void* ne7ssh::readBinary (int channel)
@@ -642,10 +642,10 @@ void* ne7ssh::readBinary (int channel)
   if (channel == -1)
   {
     errs->push (-1, "Bad channel: %i specified for reading.", channel);
-    return false;
+    return NULL;
   }
 
-  if (!lock()) return 0;
+  if (!lock()) return NULL;
   for (i = 0; i < conCount; i++)
   {
     if (channel == connections[i]->getChannelNo())
@@ -653,13 +653,13 @@ void* ne7ssh::readBinary (int channel)
       data = connections[i]->getReceived();
       if (data.size())
       {
-        if (!unlock()) return 0;
+        if (!unlock()) return NULL;
         return ((void*)connections[i]->getReceived().begin());
       }
     }
   }
-  if (!unlock()) return 0;
-  return 0;
+  if (!unlock()) return NULL;
+  return NULL;
 }
 
 
