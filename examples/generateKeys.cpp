@@ -8,7 +8,7 @@
 */
 
 #include <ne7ssh.h>
-
+#include <stdio.h>
 int main(int argc,char *argv[])
 {
    ne7ssh *_ssh = new ne7ssh();

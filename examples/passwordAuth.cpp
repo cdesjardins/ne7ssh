@@ -12,7 +12,7 @@
 */
 
 #include <ne7ssh.h>
-
+#include <stdio.h>
 int main(int argc,char *argv[])
 {
     int channel1, i;

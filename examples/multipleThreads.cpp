@@ -12,7 +12,7 @@
 */
 #include <string.h>
 #include <ne7ssh.h>
-
+#include <stdio.h>
 #if defined(WIN32) || defined (__MINGW32__)
 #   include <windows.h>
 typedef HANDLE pthread_t;
