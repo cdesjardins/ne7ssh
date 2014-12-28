@@ -84,12 +84,11 @@ bool Ne7sshSftp::init ()
 bool Ne7sshSftp::handleData (Botan::SecureVector<Botan::byte>& packet)
 {
   ne7ssh_string mainBuffer (packet, 0);
-  uint32 channelID;
   SecureVector<Botan::byte> sftpBuffer;
   uint32 len = 0;
   Botan::byte _cmd;
 
-  channelID = mainBuffer.getInt();
+  mainBuffer.getInt();
 
   if (!mainBuffer.getString (sftpBuffer)) return false;
   if (!sftpBuffer.size())
@@ -250,11 +249,11 @@ bool Ne7sshSftp::handleVersion (Botan::SecureVector<Botan::byte>& packet)
 bool Ne7sshSftp::handleStatus (Botan::SecureVector<Botan::byte>& packet)
 {
   ne7ssh_string sftpBuffer (packet, 0);
-  uint32 requestID, errorID;
+  uint32 errorID;
   SecureVector<Botan::byte> errorStr;
   
 
-  requestID = sftpBuffer.getInt();
+  sftpBuffer.getInt();
   errorID = sftpBuffer.getInt();
   sftpBuffer.getString (errorStr);
   
@@ -295,13 +294,10 @@ bool Ne7sshSftp::addOpenHandle (Botan::SecureVector<Botan::byte>& packet)
 bool Ne7sshSftp::handleSftpData (Botan::SecureVector<Botan::byte>& packet)
 {
   ne7ssh_string sftpBuffer (packet, 0);
-  uint32 requestID;
   SecureVector<Botan::byte> data;
-  uint16 len;
 
-  requestID = sftpBuffer.getInt();
+  sftpBuffer.getInt();
   sftpBuffer.getString (data);
-  len = data.size();
 
   if (data.size() == 0)
   {
@@ -319,10 +315,10 @@ bool Ne7sshSftp::handleNames (Botan::SecureVector<Botan::byte>& packet)
 {
   Ne7sshSftpPacket sftpBuffer (packet, 0);
   ne7ssh_string tmpVar;
-  uint32 requestID, fileCount, i;
+  uint32 fileCount, i;
   SecureVector<Botan::byte> fileName;
 
-  requestID = sftpBuffer.getInt();
+  sftpBuffer.getInt();
   fileCount = sftpBuffer.getInt();
   tmpVar.addInt (fileCount);
 
@@ -363,10 +359,9 @@ bool Ne7sshSftp::handleNames (Botan::SecureVector<Botan::byte>& packet)
 bool Ne7sshSftp::processAttrs (Botan::SecureVector<Botan::byte>& packet)
 {
   Ne7sshSftpPacket sftpBuffer (packet, 0);
-  uint32 requestID;
   SecureVector<Botan::byte> data;
 
-  requestID = sftpBuffer.getInt();
+  sftpBuffer.getInt();
   attrs.flags = sftpBuffer.getInt();
   if (attrs.flags & SSH2_FILEXFER_ATTR_SIZE)
     attrs.size = sftpBuffer.getInt64();
@@ -666,11 +661,9 @@ ne7ssh_string Ne7sshSftp::getFullPath (const char* filename)
 Ne7sshSftp::sftpFile* Ne7sshSftp::getFileHandle (uint32 fileID)
 {
   uint16 i;
-  uint32 _fileID;
 
   for (i = 0; i < sftpFilesCount; i++)
   {
-    _fileID = sftpFiles[i]->fileID;
     if (sftpFiles[i]->fileID == fileID)
     {
       return sftpFiles[i];

@@ -185,10 +185,9 @@ void ne7ssh_channel::sendAdjustWindow ()
 bool ne7ssh_channel::handleData (Botan::SecureVector<Botan::byte>& packet)
 {
   ne7ssh_string handleData (packet, 0);
-  uint32 channelID;
   SecureVector<Botan::byte> data;
 
-  channelID = handleData.getInt();
+  handleData.getInt();
 
   if (!handleData.getString (data)) return false;
   if (!data.size())
@@ -204,10 +203,10 @@ bool ne7ssh_channel::handleData (Botan::SecureVector<Botan::byte>& packet)
 bool ne7ssh_channel::handleExtendedData (Botan::SecureVector<Botan::byte>& packet)
 {
   ne7ssh_string handleData (packet, 0);
-  uint32 channelID, dataType;
+  uint32 dataType;
   SecureVector<Botan::byte> data;
 
-  channelID = handleData.getInt();
+  handleData.getInt();
   dataType = handleData.getInt();
   if (dataType != 1)
   {
@@ -227,11 +226,10 @@ bool ne7ssh_channel::handleExtendedData (Botan::SecureVector<Botan::byte>& packe
 void ne7ssh_channel::handleRequest (Botan::SecureVector<Botan::byte>& packet)
 {
   ne7ssh_string handleRequest (packet, 0);
-  uint32 channelID;
   SecureVector<Botan::byte> field;
   uint32 signal;
 
-  channelID = handleRequest.getInt();
+  handleRequest.getInt();
   handleRequest.getString (field);
   if (!memcmp((char*)field.begin(), "exit-signal", 11))
     ne7ssh::errors()->push (session->getSshChannel(),	"exit-signal ignored.");
@@ -302,7 +300,6 @@ void ne7ssh_channel::receive ()
 {
   ne7ssh_transport *_transport = session->transport;
   SecureVector<Botan::byte> packet;
-  uint32 padLen;
   bool notFirst = false;
   short status;
 
@@ -321,7 +318,7 @@ void ne7ssh_channel::receive ()
       return;
     }
     if (!notFirst) notFirst = true;
-    padLen = _transport->getPacket (packet);
+    _transport->getPacket (packet);
     handleReceived (packet);
   }
 }

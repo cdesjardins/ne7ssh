@@ -12,9 +12,7 @@
 int main(int argc,char *argv[])
 {
     int channel1;
-    const char* result;
     ne7ssh *_ssh = new ne7ssh();
-    int filesize = 0;
     FILE *testFi;
     Ne7SftpSubsystem _sftp;
     const char* dirList;

@@ -126,7 +126,6 @@ bool ne7ssh_connection::authWithPassword (const char* username, const char* pass
   short _cmd;
   ne7ssh_string packet;
   SecureVector<Botan::byte> response;
-  Botan::byte canContinue;
   SecureVector<Botan::byte> methods;
 
 
@@ -157,7 +156,7 @@ bool ne7ssh_connection::authWithPassword (const char* username, const char* pass
     transport->getPacket (response);
     ne7ssh_string message (response, 1);
     message.getString (methods);
-    canContinue = message.getByte();
+    message.getByte();
     ne7ssh::errors()->push (-1, "Authentication failed. Supported authentication methods: %B", &methods);
     return false;
   }
@@ -173,7 +172,6 @@ bool ne7ssh_connection::authWithKey (const char* username, const char* privKeyFi
     return false;
   short _cmd;
   SecureVector<Botan::byte> response;
-  Botan::byte canContinue;
   SecureVector<Botan::byte> methods;
 
   packetBegin.addChar (SSH2_MSG_USERAUTH_REQUEST);
@@ -215,7 +213,7 @@ bool ne7ssh_connection::authWithKey (const char* username, const char* privKeyFi
     transport->getPacket (response);
     ne7ssh_string message (response, 1);
     message.getString (methods);
-    canContinue = message.getByte();
+    message.getByte();
     ne7ssh::errors()->push (-1, "Authentication failed. Supported methods are: %B", &methods);
     return false;
   }
@@ -243,7 +241,7 @@ bool ne7ssh_connection::authWithKey (const char* username, const char* privKeyFi
     transport->getPacket (response);
     ne7ssh_string message (response, 1);
     message.getString (methods);
-    canContinue = message.getByte();
+    message.getByte();
     ne7ssh::errors()->push (-1, "Authentication failed. Supported methods are: %B", &methods);
     return false;
   }

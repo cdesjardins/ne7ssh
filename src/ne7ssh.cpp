@@ -554,7 +554,6 @@ bool ne7ssh::waitFor (int channel, const char* str, uint32 timeSec)
   const char* buffer;
   size_t len = 0, carretLen = 0, str_len = 0, prevLen = 0;
   time_t cutoff = 0;
-  bool dataChange;
 
   if (timeSec) cutoff = time(NULL) + timeSec;
 
@@ -573,10 +572,8 @@ bool ne7ssh::waitFor (int channel, const char* str, uint32 timeSec)
     if (buffer)
     {
       len = getReceivedSize(channel, false);
-      if (cutoff && prevLen && len == prevLen) dataChange = false;
-      else
+      if (!(cutoff && prevLen && len == prevLen))
       {
-        dataChange = true;
         prevLen = len;
       }
       carret = (const Botan::byte*) buffer + len - 1;
@@ -597,7 +594,6 @@ bool ne7ssh::waitFor (int channel, const char* str, uint32 timeSec)
         carret--;
       }
     }
-    else (dataChange = false);
     if (!unlock()) return false;
     usleep (10000);
     if (!cutoff) continue;

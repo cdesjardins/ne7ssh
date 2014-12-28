@@ -33,7 +33,6 @@ struct ssh_thrarg_t
 int main(int argc,char *argv[])
 {
     ne7ssh *_ssh = new ne7ssh();
-    int status;
 
     // Set SSH connection options.
     _ssh->setOptions ("aes128-cbc", "hmac-md5");
@@ -50,10 +49,10 @@ int main(int argc,char *argv[])
     args[3].thrid = 4;
 
 #if !defined(WIN32) && !defined(__MINGW32__)
-    status = pthread_create (&thread1, NULL, thread1_proc, (void*)&args[0]);
-    status = pthread_create (&thread2, NULL, thread2_proc, (void*)&args[1]);
-    status = pthread_create (&thread3, NULL, thread3_proc, (void*)&args[2]);
-    status = pthread_create (&thread4, NULL, thread4_proc, (void*)&args[3]);
+    pthread_create (&thread1, NULL, thread1_proc, (void*)&args[0]);
+    pthread_create (&thread2, NULL, thread2_proc, (void*)&args[1]);
+    pthread_create (&thread3, NULL, thread3_proc, (void*)&args[2]);
+    pthread_create (&thread4, NULL, thread4_proc, (void*)&args[3]);
     pthread_join (thread1, NULL);
     pthread_join (thread2, NULL);
     pthread_join (thread3, NULL);
@@ -153,6 +152,7 @@ void* thread1_proc (void* initData)
         // Close the connection.
         _ssh->send ("exit\n", channel1);
     }
+    return NULL;
 }
 
 void* thread2_proc (void* initData)
@@ -218,6 +218,7 @@ void* thread2_proc (void* initData)
         // Close the connection.
         _ssh->send ("exit\n", channel1);
     }
+    return NULL;
 }
 
 void* thread3_proc (void* initData)
@@ -280,6 +281,7 @@ void* thread3_proc (void* initData)
         // Close the connection.
         _ssh->send ("exit\n", channel1);
     }
+    return NULL;
 }
 
 void* thread4_proc (void* initData)
@@ -342,4 +344,5 @@ void* thread4_proc (void* initData)
         // Close the connection.
         _ssh->send ("exit\n", channel1);
     }
+    return NULL;
 }

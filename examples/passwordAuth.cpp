@@ -15,7 +15,7 @@
 #include <stdio.h>
 int main(int argc,char *argv[])
 {
-    int channel1, i;
+    int channel1;
     const char* result;
     ne7ssh *_ssh = new ne7ssh();
 
