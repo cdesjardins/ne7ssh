@@ -19,19 +19,19 @@
 
 #include "ne7ssh_types.h"
 #include <botan/bigint.h>
- 
+
 /**
 @author Andrew Useckas
 */
 class ne7ssh_string
 {
 private:
-  Botan::byte **positions;
-  uint32 parts;
-  uint32 currentPart;
+    Botan::byte** positions;
+    uint32 parts;
+    uint32 currentPart;
 
 protected:
-  Botan::SecureVector<Botan::byte> buffer;
+    Botan::SecureVector<Botan::byte> buffer;
 
 public:
     /**
@@ -63,56 +63,59 @@ public:
     /**
      * Zeros out the buffer
      */
-    void clear() { buffer.destroy(); }
+    void clear()
+    {
+        buffer.destroy();
+    }
 
     /**
-     * Adds a string to the buffer. 
+     * Adds a string to the buffer.
      * <p>Adds an integer representing the length of the string, converted to the network format, before the actual string data.
      * Required by SSH protocol specifications.
      * @param str pointer to a string.
      */
-    void addString (const char* str);
+    void addString(const char* str);
 
     /**
      * Reads content of an ASCII file and appends it to the buffer.
      * @param filename Full path to ASCII file.
      * @return True is file is successfully read. Otherwise False is returned.
      */
-    bool addFile (const char* filename);
+    bool addFile(const char* filename);
 
     /**
      * Adds a byte stream to the buffer.
      * @param buff Pointer to the byte stream.
      * @param len Length of the byte stream.
      */
-    void addBytes (const Botan::byte* buff, uint32 len);
+    void addBytes(const Botan::byte* buff, uint32 len);
 
     /**
      * Adds a vector to the buffer.
      * @param secvec Reference to the vector.
      */
-    void addVector (Botan::SecureVector<Botan::byte>& secvec);
+    void addVector(Botan::SecureVector<Botan::byte>& secvec);
 
     /**
-     * Adds a vector to the buffer. 
+     * Adds a vector to the buffer.
      * <p>Adds an integer representing the length of the vector, converted to the network format, before the actual data.
      * Required by SSH protocol specifications.
      * @param vector Reference to a vector.
      */
-    void addVectorField (const Botan::SecureVector<Botan::byte>& vector);
+    void addVectorField(const Botan::SecureVector<Botan::byte>& vector);
 
     /**
      * Adds a single character to the buffer.
      * @param ch a single character.
      */
-    void addChar (const char ch);
+    void addChar(const char ch);
 
     /**
-     * Adds a single integer to the buffer. 
+     * Adds a single integer to the buffer.
      *<p>Integer is converted to network format as required by SSH protocol specifications.
      * @param var a single integer.
      */
-    void addInt (const uint32 var);
+    void addInt(const uint32 var);
 
     /**
      * Adds a BigInt variable to the buffer.
@@ -120,68 +123,77 @@ public:
      * Converted ingeger is added to the buffer, followed by the vector.
      * @param bn Reference to BigInt variable.
      */
-    void addBigInt (const Botan::BigInt& bn);
+    void addBigInt(const Botan::BigInt& bn);
 
     /**
      * Returns the buffer as a vector.
      * @return Reference to the 'buffer' vector.
      */
-    virtual Botan::SecureVector<Botan::byte> &value () { return buffer; }
+    virtual Botan::SecureVector<Botan::byte> &value()
+    {
+        return buffer;
+    }
 
     /**
      * Returns current length of the buffer.
      * @return Length of the buffer.
      */
-    uint32 length () { return buffer.size(); }
+    uint32 length()
+    {
+        return buffer.size();
+    }
 
     /**
      * Extracts a single string from the payload field of SSH packet.
      * @param result Reference to a buffer where the result will be stored.
      * @return True if string field was found and successfully parsed, otherwise false is returned.
      */
-    bool getString (Botan::SecureVector<Botan::byte>& result);
+    bool getString(Botan::SecureVector<Botan::byte>& result);
 
     /**
      * Extracts a single BigInt variable from the payload field of SSH packet.
      * @param result Reference to a BigInt variable where the result will be stored.
      * @return True if BigInt field was found and successfully parsed, otherwise false is returned.
      */
-    bool getBigInt (Botan::BigInt& result);
+    bool getBigInt(Botan::BigInt& result);
 
     /**
      * Extracts a single unsigned integer (uint32) from the payload field of SSH packet.
      * @return The integer extracted from the next 4 bytes of the payload.
      */
-    uint32 getInt ();
+    uint32 getInt();
 
     /**
      * Extracts a single byte from tje payload field of SSH packet.
      * @return A byte extracted from thenext byte of the payload.
      */
-    Botan::byte getByte ();
+    Botan::byte getByte();
 
     /**
      * Splits the buffer into strings separated by null character.
      * @param token Searches for this character in the buffer, replaces it with null and creates a part index.
      */
-    void split (const char token);
+    void split(const char token);
 
     /**
      * Returns to the first part.
      */
-    void resetParts () { currentPart = 0; }
+    void resetParts()
+    {
+        currentPart = 0;
+    }
 
     /**
      * Returns the next part.
      * @return NULL terminated string, or 0 if this is the last part.
      */
-    char* nextPart ();
+    char* nextPart();
 
     /**
      * Chops bytes off of the end of the buffer.
      * @param nBytes How many bytes to chop off the end of the buffer.
      */
-    void chop (uint32 nBytes);
+    void chop(uint32 nBytes);
 
     /**
      * Converts BigInt into vector
@@ -189,8 +201,7 @@ public:
      * @param result Reference to vector where the converted result will be dumped.
      * @param bi Reference to BigInt to convert.
      */
-    static void bn2vector (Botan::SecureVector<Botan::byte>& result, const Botan::BigInt& bi);
-
+    static void bn2vector(Botan::SecureVector<Botan::byte>& result, const Botan::BigInt& bi);
 };
 
 #endif

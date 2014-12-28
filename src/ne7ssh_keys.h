@@ -29,15 +29,14 @@
 
 #define MAX_KEYSIZE 8192
 
-
 /**
  @author Andrew Useckas <andrew@netsieben.com>
 */
 class ne7ssh_keys
 {
-  private:
-    Botan::DSA_PrivateKey *dsaPrivateKey;
-    Botan::RSA_PrivateKey *rsaPrivateKey;
+private:
+    Botan::DSA_PrivateKey* dsaPrivateKey;
+    Botan::RSA_PrivateKey* rsaPrivateKey;
     ne7ssh_string publicKeyBlob;
     Botan::SecureVector<Botan::byte> signature;
 
@@ -49,7 +48,7 @@ class ne7ssh_keys
      * @param size Length of the stream.
      * @return True if keys succesfully extracted. Otherwise False is returned.
      */
-    bool getDSAKeys (char* buffer, uint32 size);
+    bool getDSAKeys(char* buffer, uint32 size);
 
     /**
      * Extracts RSA key pair from a PEM encoded stream.
@@ -57,9 +56,9 @@ class ne7ssh_keys
      * @param size Length of the stream.
      * @return True if keys succesfully extracted. Otherwise False is returned.
      */
-    bool getRSAKeys (char* buffer, uint32 size);
+    bool getRSAKeys(char* buffer, uint32 size);
 
-  public:
+public:
     enum keyAlgos { DSA, RSA };
 
     /**
@@ -69,7 +68,7 @@ class ne7ssh_keys
 
     /**
      * ne7ssh_keys destructor.
-     * @return 
+     * @return
      */
     ~ne7ssh_keys();
 
@@ -81,7 +80,7 @@ class ne7ssh_keys
      * @param keySize Desired key size in bits. If not specified will default to 2048.
      * @return True if keys generated and written to the files. Otherwise false is returned.
      */
-    bool generateDSAKeys (const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 2048);
+    bool generateDSAKeys(const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 2048);
 
     /**
      * Generates RSA Key pair and saves keys in specified files.
@@ -91,15 +90,15 @@ class ne7ssh_keys
      * @param keySize Desired key size in bits. If not specified will default to 2048.
      * @return True if keys generated and written to the files. Otherwise false is returned.
      */
-    bool generateRSAKeys (const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 2048);
+    bool generateRSAKeys(const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 2048);
 
     /**
-     * Extracts key pair from a PEM encoded file. 
+     * Extracts key pair from a PEM encoded file.
      * <p>Reads the file and determines the type of key, then passes processing to either getDsaKeys() or getRSAKeys(*) functions.
      * @param privKeyFileName Full path to PEM encoded file.
      * @return True if key succesfully extracted, otherwise False is returned.
      */
-    bool getKeyPairFromFile (const char* privKeyFileName);
+    bool getKeyPairFromFile(const char* privKeyFileName);
 
     /**
      * Generates a SHA-1 signature from sessionID and packet data provided.
@@ -108,7 +107,7 @@ class ne7ssh_keys
      * @param signingData Packet data to sign.
      * @return Returns signature, or 0 length vector if operation failed.
      */
-    Botan::SecureVector<Botan::byte>& generateSignature (Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData);
+    Botan::SecureVector<Botan::byte>& generateSignature(Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData);
 
     /**
      * Generates a SHA-1 signature from sessionID and packet data provided, using DSA private key initialized before.
@@ -116,7 +115,7 @@ class ne7ssh_keys
      * @param signingData Packet data to sign.
      * @return Returns signature, or 0 length vector if operation failed.
      */
-    Botan::SecureVector<Botan::byte> generateDSASignature (Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData);
+    Botan::SecureVector<Botan::byte> generateDSASignature(Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData);
 
     /**
      * Generates a SHA-1 signature from sessionID and packet data provided, using DSA private key initialized before.
@@ -124,20 +123,22 @@ class ne7ssh_keys
      * @param signingData Packet data to sign.
      * @return Returns signature, or 0 length vector if operation failed.
      */
-    Botan::SecureVector<Botan::byte> generateRSASignature (Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData);
+    Botan::SecureVector<Botan::byte> generateRSASignature(Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData);
 
     /**
      * After key pair has been initialized, this function returns public key blob, as specified by SSH2 specs.
      * @return Public key blob or zero length vector, if there are initialized keys.
      */
-    Botan::SecureVector<Botan::byte>& getPublicKeyBlob ();
+    Botan::SecureVector<Botan::byte>& getPublicKeyBlob();
 
     /**
      * Returns type of initialized keys.
      * @return Type of keys.
      */
-    uint8 getKeyAlgo () { return keyAlgo; }
-
+    uint8 getKeyAlgo()
+    {
+        return keyAlgo;
+    }
 };
 
 #endif

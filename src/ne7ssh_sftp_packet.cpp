@@ -23,11 +23,11 @@ Ne7sshSftpPacket::Ne7sshSftpPacket () : ne7ssh_string(), channel(-1)
 {
 }
 
-Ne7sshSftpPacket::Ne7sshSftpPacket (int _channel) : ne7ssh_string (), channel (_channel)
+Ne7sshSftpPacket::Ne7sshSftpPacket (int _channel) : ne7ssh_string(), channel(_channel)
 {
 }
 
-Ne7sshSftpPacket::Ne7sshSftpPacket (Botan::SecureVector<Botan::byte>& var, uint32 position) : ne7ssh_string (var, position), channel(-1)
+Ne7sshSftpPacket::Ne7sshSftpPacket (Botan::SecureVector<Botan::byte>& var, uint32 position) : ne7ssh_string(var, position), channel(-1)
 {
 }
 
@@ -35,91 +35,96 @@ Ne7sshSftpPacket::~Ne7sshSftpPacket()
 {
 }
 
-Botan::SecureVector<Botan::byte> &Ne7sshSftpPacket::value ()
+Botan::SecureVector<Botan::byte> &Ne7sshSftpPacket::value()
 {
-  ne7ssh_string tmpVar;
+    ne7ssh_string tmpVar;
 
-  if (this->channel < 0)
-  {
-    buffer.destroy();
+    if (this->channel < 0)
+    {
+        buffer.destroy();
+        return buffer;
+    }
+
+    tmpVar.addChar(SSH2_MSG_CHANNEL_DATA);
+    tmpVar.addInt(channel);
+    tmpVar.addInt(sizeof(uint32) + buffer.size());
+    tmpVar.addVectorField(buffer);
+
+    buffer.swap(tmpVar.value());
     return buffer;
-  }
-    
-  tmpVar.addChar (SSH2_MSG_CHANNEL_DATA);
-  tmpVar.addInt (channel);
-  tmpVar.addInt (sizeof(uint32) + buffer.size());
-  tmpVar.addVectorField (buffer);
-  
-  buffer.swap (tmpVar.value());
-  return buffer;
 }
 
-Botan::SecureVector<Botan::byte> Ne7sshSftpPacket::valueFragment (uint32 len)
+Botan::SecureVector<Botan::byte> Ne7sshSftpPacket::valueFragment(uint32 len)
 {
-  ne7ssh_string tmpVar;
+    ne7ssh_string tmpVar;
 
-  if (this->channel < 0)
-  {
-    buffer.destroy();
-    return Botan::SecureVector<Botan::byte>();
-  }
-    
-  tmpVar.addChar (SSH2_MSG_CHANNEL_DATA);
-  tmpVar.addInt (channel);
-  if (len)
-  {
-    tmpVar.addInt (sizeof(uint32) + buffer.size());
-    tmpVar.addInt (len);
-    tmpVar.addVector (buffer);
-  }
-  else tmpVar.addVectorField (buffer);
-  
-  return Botan::SecureVector<Botan::byte> (tmpVar.value());
+    if (this->channel < 0)
+    {
+        buffer.destroy();
+        return Botan::SecureVector<Botan::byte>();
+    }
+
+    tmpVar.addChar(SSH2_MSG_CHANNEL_DATA);
+    tmpVar.addInt(channel);
+    if (len)
+    {
+        tmpVar.addInt(sizeof(uint32) + buffer.size());
+        tmpVar.addInt(len);
+        tmpVar.addVector(buffer);
+    }
+    else
+    {
+        tmpVar.addVectorField(buffer);
+    }
+
+    return Botan::SecureVector<Botan::byte> (tmpVar.value());
 }
 
-void Ne7sshSftpPacket::addInt64 (const uint64 var)
+void Ne7sshSftpPacket::addInt64(const uint64 var)
 {
-  uint8 converter[8];
-  
-  converter[0] = (uint8) (var >> 56);
-  converter[1] = (uint8) (var >> 48);
-  converter[2] = (uint8) (var >> 40);
-  converter[3] = (uint8) (var >> 32);
-  converter[4] = (uint8) (var >> 24);
-  converter[5] = (uint8) (var >> 16);
-  converter[6] = (uint8) (var >> 8);
-  converter[7] = (uint8) var;
+    uint8 converter[8];
 
-  addBytes (converter, 8);
+    converter[0] = (uint8) (var >> 56);
+    converter[1] = (uint8) (var >> 48);
+    converter[2] = (uint8) (var >> 40);
+    converter[3] = (uint8) (var >> 32);
+    converter[4] = (uint8) (var >> 24);
+    converter[5] = (uint8) (var >> 16);
+    converter[6] = (uint8) (var >> 8);
+    converter[7] = (uint8) var;
+
+    addBytes(converter, 8);
 }
 
-
-uint64 Ne7sshSftpPacket::getInt64 ()
+uint64 Ne7sshSftpPacket::getInt64()
 {
-  SecureVector<Botan::byte> tmpVar (buffer);
-  uint64 result;
-  uint8 converter[8];
-  memcpy (converter, tmpVar.begin(), 8);
+    SecureVector<Botan::byte> tmpVar(buffer);
+    uint64 result;
+    uint8 converter[8];
+    memcpy(converter, tmpVar.begin(), 8);
 
-  result = (uint64)converter[0] << 56;
-  result |= (uint64)converter[1] << 48;
-  result |= (uint64)converter[2] << 40;
-  result |= (uint64)converter[3] << 32;
-  result |= (uint64)converter[4] << 24;
-  result |= (uint64)converter[5] << 16;
-  result |= (uint64)converter[6] << 8;
-  result |= (uint64)converter[7];
+    result = (uint64)converter[0] << 56;
+    result |= (uint64)converter[1] << 48;
+    result |= (uint64)converter[2] << 40;
+    result |= (uint64)converter[3] << 32;
+    result |= (uint64)converter[4] << 24;
+    result |= (uint64)converter[5] << 16;
+    result |= (uint64)converter[6] << 8;
+    result |= (uint64)converter[7];
 
-  buffer.set (tmpVar.begin() + sizeof(uint64), tmpVar.size() - sizeof(uint64));
-  return result;
+    buffer.set(tmpVar.begin() + sizeof(uint64), tmpVar.size() - sizeof(uint64));
+    return result;
 }
 
-bool Ne7sshSftpPacket::isChannelSet ()
-{ 
-  if (this->channel == -1) return false;
-  else return true; 
+bool Ne7sshSftpPacket::isChannelSet()
+{
+    if (this->channel == -1)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
-
-
-
 

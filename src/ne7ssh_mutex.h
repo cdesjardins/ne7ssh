@@ -14,7 +14,6 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
 
-
 #ifndef NE7SSH_MUTEX_H
 #define NE7SSH_MUTEX_H
 

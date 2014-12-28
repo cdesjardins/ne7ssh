@@ -41,7 +41,7 @@ class ne7ssh_session;
 */
 class ne7ssh_transport
 {
-  private:
+private:
     uint32 seq, rSeq;
     const ne7ssh_session* session;
     SOCKET sock;
@@ -54,7 +54,7 @@ class ne7ssh_transport
      * @param on If set to true, NonBlocking option will be turned on, and vice versa.
      * @return True if options have been successfuly set, otherwise false is returned.
      */
-    bool NoBlock (SOCKET socket, bool on);
+    bool NoBlock(SOCKET socket, bool on);
 
     /**
      * Waits for activity on a socket.
@@ -63,9 +63,9 @@ class ne7ssh_transport
      * @param timeout Desired timeout. By default the function will block until socket is ready for reading/writting. If set to '0', the function will return right away.
      * @return True if socket is ready for reading/writting, otherwise false is returned.
      */
-    bool wait (SOCKET socket, int rw, int timeout = -1);
+    bool wait(SOCKET socket, int rw, int timeout = -1);
 
-  public:
+public:
     /**
      * ne7ssh_transport class constructor.
      * <p> Transport class handles all socket communications for the ne7ssh library.
@@ -85,7 +85,7 @@ class ne7ssh_transport
      * @param timeout Timeout for the establish procedure, in seconds.
      * @return Socket number or -1 on failure.
      */
-    SOCKET establish (const char *host, uint32 port, int timeout = 0);
+    SOCKET establish(const char* host, uint32 port, int timeout = 0);
 
     /**
      * Reads data from the socket.
@@ -93,21 +93,21 @@ class ne7ssh_transport
      * @param append If set to true, received data will be appended to the buffer, instead of overwriting it.
      * @return True if data successfuly read, otherwise false is returned.
      */
-    bool receive (Botan::SecureVector<Botan::byte>& buffer, bool append = false);
+    bool receive(Botan::SecureVector<Botan::byte>& buffer, bool append = false);
 
     /**
      * Writes a buffer to the socket.
      * @param buffer Data to be written to the socket.
      * @return True if data successful sent, otherwise false is returned.
      */
-    bool send (Botan::SecureVector<Botan::byte>& buffer);
+    bool send(Botan::SecureVector<Botan::byte>& buffer);
 
     /**
      * Assembles an SSH packet, as specified in SSH standards and passes the buffer to send() function.
      * @param buffer Payload to be sent.
      * @return True if send successful, otherwise false is returned.
      */
-    bool sendPacket (Botan::SecureVector<Botan::byte>& buffer);
+    bool sendPacket(Botan::SecureVector<Botan::byte>& buffer);
 
     /**
      * Waits until specified type of packet is received.
@@ -117,20 +117,20 @@ class ne7ssh_transport
      * @param bufferOnly Does not wait to receive a new packet, only checks existing receive buffer for unprocessed packets.
      * @return 1 if desired packet is received, 0 if there another packet is received, or -1 if HMAC checking is enabled, and remote and local HMACs do not match.
      */
-    short waitForPacket (Botan::byte cmd, bool bufferOnly = false);
+    short waitForPacket(Botan::byte cmd, bool bufferOnly = false);
 
     /**
      * Gets the payload section from an SSH packet received by waitForPacket() function.
      * @param result The payload will be stored here.
      * @return The SSH packet passing length.
      */
-    uint32 getPacket (Botan::SecureVector<Botan::byte>& result);
+    uint32 getPacket(Botan::SecureVector<Botan::byte>& result);
 
     /**
      * Checks to see if there is more data to be read from the socket.
      * @return True if there is data to be read, otherwise false is returned.
      */
-    bool haveData ();
+    bool haveData();
 };
 
 #endif

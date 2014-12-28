@@ -25,10 +25,10 @@
 */
 class Ne7sshSftpPacket : public ne7ssh_string
 {
-  private:
+private:
     int channel;
 
-  public:
+public:
     /**
      * Default constructor.
      */
@@ -46,7 +46,7 @@ class Ne7sshSftpPacket : public ne7ssh_string
      * @param position Offset.
      */
     Ne7sshSftpPacket(Botan::SecureVector<Botan::byte>& var, uint32 position);
-    
+
     /**
      * Default destructor.
      */
@@ -56,33 +56,32 @@ class Ne7sshSftpPacket : public ne7ssh_string
      * Returns buffer as a vector appending the SFTP subsystem specific packet headers.
      * @return Reference to the buffer.
      */
-    Botan::SecureVector<Botan::byte> &value ();
+    Botan::SecureVector<Botan::byte> &value();
 
     /**
      * Returns buffer as a vector appending the SFTP subsystem specific packet headers, including the length in the first packet transmitted. Used in transmissions when it's necessary to split the message into multiple packets.
      * @param len Length to append to the first packet in the message.
      * @return Reference to SFTP packet or empty vector on error.
      */
-    Botan::SecureVector<Botan::byte> valueFragment (uint32 len = 0);
+    Botan::SecureVector<Botan::byte> valueFragment(uint32 len = 0);
 
     /**
      * Appends 64 bit integer to the packet buffer.
      * @param var 64 bit integer.
      */
-    void addInt64 (const uint64 var);
+    void addInt64(const uint64 var);
 
     /**
      * Retrieves a 64 bit integer from a packet buffer.
      * @return Unsigned 64 bit integer.
      */
-    uint64 getInt64 ();
+    uint64 getInt64();
 
     /**
      * Checks if the channel ID is set in the instance. Channel ID is needed to construct a SFTP packet.
      * @return True if the channel ID is set. Otherwise false.
      */
-    bool isChannelSet ();
-
+    bool isChannelSet();
 };
 
 #endif

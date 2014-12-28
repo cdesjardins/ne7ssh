@@ -28,7 +28,7 @@
 */
 class ne7ssh_kex
 {
-  private:
+private:
     ne7ssh_session* session;
     ne7ssh_string localKex;
     ne7ssh_string remotKex;
@@ -47,9 +47,9 @@ class ne7ssh_kex
      * Computes H hash, from concated values of the local SSH version string, remote SSH version string, local KEX_INIT payload, remote KEX_INIT payload, host key, e, f and k BigInt values.
      * @param hVector Reference to a vecor where H value will be stored.
      */
-    void makeH (Botan::SecureVector<Botan::byte>& hVector);
+    void makeH(Botan::SecureVector<Botan::byte>& hVector);
 
-  public:
+public:
     /**
      * ne7ssh_kex class constructor.
      * @param _session Pointer to ne7ssh_session variable.
@@ -93,7 +93,6 @@ class ne7ssh_kex
      * @return True if all operations are successful, otherwise false is returned.
      */
     bool sendKexNewKeys();
-
 };
 
 #endif

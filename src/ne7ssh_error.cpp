@@ -22,249 +22,323 @@
 using namespace Botan;
 Ne7ssh_Mutex Ne7sshError::mut;
 
-Ne7sshError::Ne7sshError() : memberCount(0),  ErrorBuffer(0)
+Ne7sshError::Ne7sshError() : memberCount(0), ErrorBuffer(0)
 {
-
 }
 
 Ne7sshError::~Ne7sshError()
 {
-  uint16 i;
+    uint16 i;
 
-  for (i = 0; i < memberCount; i++)
-  {
-    if (ErrorBuffer[i] && ErrorBuffer[i]->errorStr) free (ErrorBuffer[i]->errorStr);
-    free (ErrorBuffer[i]);
-  }
-  free (ErrorBuffer);	
-}
-
-
-bool Ne7sshError::push (int32 channel, const char* format, ...)
-{
-  va_list args;
-  char *s;
-  char* errStr = 0;
-  uint32 len = 0, msgLen = 0, _pos = 0;
-  bool isArg = false;
-  bool isUnsigned = false;
-  char converter[21];
-  SecureVector<Botan::byte> *secVec;
-  int32 i;
-
-  if (channel < -1 || !format)
-    return false;
-
-  converter[0] = 0x00;
-  len = strlen (format);
-
-  va_start (args, format);
-  errStr = (char*) malloc (len + 1);
-
-  do
-  {
-    if (*format == '%' || isArg)
+    for (i = 0; i < memberCount; i++)
     {
-      switch (*format)
-      {
-        case '%':
-          isArg = true;
-          break;
-
-        case 'u':
-          isUnsigned = true;
-          break;
-
-        case 's':
-          s = va_arg (args, char*);
-          msgLen = strlen (s);
-          if (msgLen > MAX_ERROR_LEN) msgLen = MAX_ERROR_LEN;
-          errStr = (char*) realloc (errStr, len + msgLen + 1);
-          memcpy ((errStr + _pos), s, msgLen);
-          if (isUnsigned) len += msgLen - 3;
-          else len += msgLen - 2;
-          _pos += msgLen;
-          isUnsigned = false;
-          isArg = false;
-          break;
-
-        case 'B':
-          secVec = va_arg (args, SecureVector<Botan::byte>*);
-	  msgLen = secVec->size();
-          if (msgLen > MAX_ERROR_LEN) msgLen = MAX_ERROR_LEN;
-          errStr = (char*) realloc (errStr, len + msgLen + 1);
-          memcpy ((errStr + _pos), secVec->begin(), msgLen);
-          if (isUnsigned) len += msgLen - 3;
-          else len += msgLen - 2;
-          _pos += msgLen;
-          isUnsigned = false;
-          isArg = false;
-          break;
-
-        case 'l':
-        case 'd':
-        case 'i':
-          i = va_arg (args, int32);
-          if (isUnsigned) sprintf (converter, "%u", i);
-          else sprintf (converter, "%d", i);
-          msgLen = strlen (converter);
-          errStr = (char*) realloc (errStr, len + msgLen + 1);
-          memcpy ((errStr + _pos), converter, msgLen);
-          if (isUnsigned) len += msgLen - 3;
-          else len += msgLen - 2;
-          _pos += msgLen;
-          isUnsigned = false;
-          isArg = false;
-          break;
-
-        case 'x':
-          i = va_arg (args, int32);
-          sprintf (converter, "%x", i);
-          msgLen = strlen (converter);
-          errStr = (char*) realloc (errStr, len + msgLen + 1);
-          memcpy ((errStr + _pos), converter, msgLen);
-          if (isUnsigned) len += msgLen - 3;
-          else len += msgLen - 2;
-          _pos += msgLen;
-          isUnsigned = false;
-          isArg = false;
-          break;
-      }
+        if (ErrorBuffer[i] && ErrorBuffer[i]->errorStr)
+        {
+            free(ErrorBuffer[i]->errorStr);
+        }
+        free(ErrorBuffer[i]);
     }
-    else errStr[_pos++] = *format;
-
-  } while (*format++);
-
-  va_end (args);
-
-  if (!lock()) return false;
-  if (!memberCount) 
-  {
-    ErrorBuffer = (Error**) malloc (sizeof(Error*));
-    ErrorBuffer[0] = (Error*) malloc (sizeof(Error));
-  }
-  else
-  {
-    ErrorBuffer = (Error**) realloc (ErrorBuffer, sizeof(Error*) * (memberCount + 1));
-    ErrorBuffer[memberCount] = (Error*) malloc (sizeof(Error));
-  }
-		
-  ErrorBuffer[memberCount]->channel = channel;
-  ErrorBuffer[memberCount]->errorStr = errStr;
-  memberCount++;
-  if (!unlock()) return false;
-  return true;
+    free(ErrorBuffer);
 }
 
-const char* Ne7sshError::pop ()
+bool Ne7sshError::push(int32 channel, const char* format, ...)
 {
-  return pop(-1);
-}
+    va_list args;
+    char* s;
+    char* errStr = 0;
+    uint32 len = 0, msgLen = 0, _pos = 0;
+    bool isArg = false;
+    bool isUnsigned = false;
+    char converter[21];
+    SecureVector<Botan::byte>* secVec;
+    int32 i;
 
-const char* Ne7sshError::pop (int32 channel)
-{
-  uint16 i;
-  int32 recID = -1;
-  const char* result = 0;
-  uint32 len;
-
-  if (!memberCount) return NULL;
-  if (!lock()) return NULL;
-
-  for (i = 0; i < memberCount; i++)
-  {
-    if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
+    if (channel < -1 || !format)
     {
-      recID = i;
-      result = ErrorBuffer[i]->errorStr;
+        return false;
     }
-  }
-  if (recID < 0)
-  {
-    unlock();
-    return NULL;
-  }
 
-  if (result)
-  {
-    len = strlen (result) < MAX_ERROR_LEN ? strlen (result) : MAX_ERROR_LEN;
-    memcpy (popedErr, result, len + 1);
-    deleteRecord (recID);
-  }
-  else 
-  {
-    unlock();
-    return NULL;
-  }
-  if (!unlock()) return NULL;
+    converter[0] = 0x00;
+    len = strlen(format);
 
-  return popedErr;
-}
+    va_start(args, format);
+    errStr = (char*) malloc(len + 1);
 
-bool Ne7sshError::deleteRecord (uint16 recID)
-{
-  uint16 i;
-
-  if (ErrorBuffer[recID] && ErrorBuffer[recID]->errorStr) free (ErrorBuffer[recID]->errorStr);
-  else return false;
-  free (ErrorBuffer[recID]);
-  ErrorBuffer[recID] = 0;
-  for (i = recID + 1; i < memberCount; i++)
-  {
-    ErrorBuffer[i - 1] = ErrorBuffer[i];
-  }
-  memberCount--;
-  return true;
-}
-
-
-bool Ne7sshError::deleteCoreMsgs ()
-{
-  return deleteChannel(-1);
-}
-
-bool Ne7sshError::deleteChannel (int32 channel)
-{
-  uint16 i, offset=0;
-
-  if (!lock()) return false;
-  for (i = 0; i < memberCount; i++)
-  {
-    if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
+    do
     {
-      if (ErrorBuffer[i]->errorStr) free (ErrorBuffer[i]->errorStr);
-      free (ErrorBuffer[i]);
-      offset++;
+        if (*format == '%' || isArg)
+        {
+            switch (*format)
+            {
+                case '%':
+                    isArg = true;
+                    break;
+
+                case 'u':
+                    isUnsigned = true;
+                    break;
+
+                case 's':
+                    s = va_arg(args, char*);
+                    msgLen = strlen(s);
+                    if (msgLen > MAX_ERROR_LEN)
+                    {
+                        msgLen = MAX_ERROR_LEN;
+                    }
+                    errStr = (char*) realloc(errStr, len + msgLen + 1);
+                    memcpy((errStr + _pos), s, msgLen);
+                    if (isUnsigned)
+                    {
+                        len += msgLen - 3;
+                    }
+                    else
+                    {
+                        len += msgLen - 2;
+                    }
+                    _pos += msgLen;
+                    isUnsigned = false;
+                    isArg = false;
+                    break;
+
+                case 'B':
+                    secVec = va_arg(args, SecureVector<Botan::byte>*);
+                    msgLen = secVec->size();
+                    if (msgLen > MAX_ERROR_LEN)
+                    {
+                        msgLen = MAX_ERROR_LEN;
+                    }
+                    errStr = (char*) realloc(errStr, len + msgLen + 1);
+                    memcpy((errStr + _pos), secVec->begin(), msgLen);
+                    if (isUnsigned)
+                    {
+                        len += msgLen - 3;
+                    }
+                    else
+                    {
+                        len += msgLen - 2;
+                    }
+                    _pos += msgLen;
+                    isUnsigned = false;
+                    isArg = false;
+                    break;
+
+                case 'l':
+                case 'd':
+                case 'i':
+                    i = va_arg(args, int32);
+                    if (isUnsigned)
+                    {
+                        sprintf(converter, "%u", i);
+                    }
+                    else
+                    {
+                        sprintf(converter, "%d", i);
+                    }
+                    msgLen = strlen(converter);
+                    errStr = (char*) realloc(errStr, len + msgLen + 1);
+                    memcpy((errStr + _pos), converter, msgLen);
+                    if (isUnsigned)
+                    {
+                        len += msgLen - 3;
+                    }
+                    else
+                    {
+                        len += msgLen - 2;
+                    }
+                    _pos += msgLen;
+                    isUnsigned = false;
+                    isArg = false;
+                    break;
+
+                case 'x':
+                    i = va_arg(args, int32);
+                    sprintf(converter, "%x", i);
+                    msgLen = strlen(converter);
+                    errStr = (char*) realloc(errStr, len + msgLen + 1);
+                    memcpy((errStr + _pos), converter, msgLen);
+                    if (isUnsigned)
+                    {
+                        len += msgLen - 3;
+                    }
+                    else
+                    {
+                        len += msgLen - 2;
+                    }
+                    _pos += msgLen;
+                    isUnsigned = false;
+                    isArg = false;
+                    break;
+            }
+        }
+        else
+        {
+            errStr[_pos++] = *format;
+        }
+    } while (*format++);
+
+    va_end(args);
+
+    if (!lock())
+    {
+        return false;
     }
-    else if (offset) ErrorBuffer[i - offset] = ErrorBuffer[i];
-  }
-  memberCount -= offset;
-  if (!unlock()) return false;
-  return true;
+    if (!memberCount)
+    {
+        ErrorBuffer = (Error**) malloc(sizeof(Error*));
+        ErrorBuffer[0] = (Error*) malloc(sizeof(Error));
+    }
+    else
+    {
+        ErrorBuffer = (Error**) realloc(ErrorBuffer, sizeof(Error*) * (memberCount + 1));
+        ErrorBuffer[memberCount] = (Error*) malloc(sizeof(Error));
+    }
+
+    ErrorBuffer[memberCount]->channel = channel;
+    ErrorBuffer[memberCount]->errorStr = errStr;
+    memberCount++;
+    if (!unlock())
+    {
+        return false;
+    }
+    return true;
 }
 
-bool Ne7sshError::lock ()
+const char* Ne7sshError::pop()
 {
-  int status;
-  status = Ne7sshError::mut.lock();
-  if (status)
-  {
-    /// FIXME possible infinite loop
-    ne7ssh::errors()->push (-1, "Could not aquire a mutex lock. Error: %i.", status);
-    usleep (1000);
-    return false;
-  }
-  return true;
+    return pop(-1);
 }
 
-bool Ne7sshError::unlock ()
+const char* Ne7sshError::pop(int32 channel)
 {
-  int status;
-  status = Ne7sshError::mut.unlock();
-  if (status)
-  {
-    ne7ssh::errors()->push (-1, "Error while releasing a mutex lock. Error: %i.", status);
-    return false;
-  }
-  return true;
+    uint16 i;
+    int32 recID = -1;
+    const char* result = 0;
+    uint32 len;
+
+    if (!memberCount)
+    {
+        return NULL;
+    }
+    if (!lock())
+    {
+        return NULL;
+    }
+
+    for (i = 0; i < memberCount; i++)
+    {
+        if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
+        {
+            recID = i;
+            result = ErrorBuffer[i]->errorStr;
+        }
+    }
+    if (recID < 0)
+    {
+        unlock();
+        return NULL;
+    }
+
+    if (result)
+    {
+        len = strlen(result) < MAX_ERROR_LEN ? strlen(result) : MAX_ERROR_LEN;
+        memcpy(popedErr, result, len + 1);
+        deleteRecord(recID);
+    }
+    else
+    {
+        unlock();
+        return NULL;
+    }
+    if (!unlock())
+    {
+        return NULL;
+    }
+
+    return popedErr;
 }
+
+bool Ne7sshError::deleteRecord(uint16 recID)
+{
+    uint16 i;
+
+    if (ErrorBuffer[recID] && ErrorBuffer[recID]->errorStr)
+    {
+        free(ErrorBuffer[recID]->errorStr);
+    }
+    else
+    {
+        return false;
+    }
+    free(ErrorBuffer[recID]);
+    ErrorBuffer[recID] = 0;
+    for (i = recID + 1; i < memberCount; i++)
+    {
+        ErrorBuffer[i - 1] = ErrorBuffer[i];
+    }
+    memberCount--;
+    return true;
+}
+
+bool Ne7sshError::deleteCoreMsgs()
+{
+    return deleteChannel(-1);
+}
+
+bool Ne7sshError::deleteChannel(int32 channel)
+{
+    uint16 i, offset = 0;
+
+    if (!lock())
+    {
+        return false;
+    }
+    for (i = 0; i < memberCount; i++)
+    {
+        if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
+        {
+            if (ErrorBuffer[i]->errorStr)
+            {
+                free(ErrorBuffer[i]->errorStr);
+            }
+            free(ErrorBuffer[i]);
+            offset++;
+        }
+        else if (offset)
+        {
+            ErrorBuffer[i - offset] = ErrorBuffer[i];
+        }
+    }
+    memberCount -= offset;
+    if (!unlock())
+    {
+        return false;
+    }
+    return true;
+}
+
+bool Ne7sshError::lock()
+{
+    int status;
+    status = Ne7sshError::mut.lock();
+    if (status)
+    {
+        /// FIXME possible infinite loop
+        ne7ssh::errors()->push(-1, "Could not aquire a mutex lock. Error: %i.", status);
+        usleep(1000);
+        return false;
+    }
+    return true;
+}
+
+bool Ne7sshError::unlock()
+{
+    int status;
+    status = Ne7sshError::mut.unlock();
+    if (status)
+    {
+        ne7ssh::errors()->push(-1, "Error while releasing a mutex lock. Error: %i.", status);
+        return false;
+    }
+    return true;
+}
+

@@ -26,11 +26,11 @@
 #include "ne7ssh_mutex.h"
 
 /**
-	@author Andrew Useckas <andrew@netsieben.com>
+    @author Andrew Useckas <andrew@netsieben.com>
 */
 class SSH_EXPORT Ne7sshError
 {
-  private:
+private:
     uint16 memberCount;
     char popedErr[MAX_ERROR_LEN + 1];
     static Ne7ssh_Mutex mut;
@@ -40,30 +40,30 @@ class SSH_EXPORT Ne7sshError
     */
     struct Error
     {
-      int32 channel;
-      char* errorStr;
-    } **ErrorBuffer;
+        int32 channel;
+        char* errorStr;
+    }** ErrorBuffer;
 
     /**
     * Delete a single error message.
     * @param recID Position within the array.
     * @return True on success, false on failure.
     */
-    bool deleteRecord (uint16 recID);
+    bool deleteRecord(uint16 recID);
 
     /**
     * Lock the mutex.
     * @return True if lock aquired. Oterwise false.
     */
-    static bool lock ();
+    static bool lock();
 
     /**
     * Unlock the mutext.
     * @return True if the mutext successfully unlocked. Otherwise false.
     */
-    static bool unlock ();
+    static bool unlock();
 
-  public:
+public:
     /**
      * Ne7sshError constructor.
      */
@@ -80,34 +80,33 @@ class SSH_EXPORT Ne7sshError
     * @param format Specifies the error message followed by argument in printf format. The following formatting characters are supported: %s,%d,%i,%l,%x. Modifier %u can be used together with decimal to specify an unsigned variable. Returns null if no there are no erros in the Core context.
     * @return True on success, false on failure.
     */
-    bool push (int32 channel, const char* format, ...);
+    bool push(int32 channel, const char* format, ...);
 
     /**
     * Pops an error message from the Core context.
     * @return The last error message in the Core context. The message is removed from the stack.
     */
-    const char* pop ();
+    const char* pop();
 
     /**
     * Pops an error message from the Channel context.
     * @param channel Specifies the channel error message was bound to. This is ne7ssh library channel, not the receive or send channels used by the transport layer.
     * @return The last error message in the Channel context. The message is removed from the stack. Returns null if no there are no erros in the Channel context.
     */
-    const char* pop (int32 channel);
+    const char* pop(int32 channel);
 
     /**
     * Removes all error messages within Core context from the stack.
     * @return True on success, false on failure.
     */
-    bool deleteCoreMsgs ();
+    bool deleteCoreMsgs();
 
     /**
     * Removes all error messages within Channel context from the stack.
     * @param channel Specifies the channel error message was bound to. This is ne7ssh library channel, not the receive or send channels used by the transport layer.
     * @return True on succes, false on failure.
     */
-    bool deleteChannel (int32 channel);
-
+    bool deleteChannel(int32 channel);
 };
 
 #endif

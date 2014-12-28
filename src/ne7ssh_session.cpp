@@ -20,7 +20,6 @@ ne7ssh_session::ne7ssh_session() : sendChannel(0), receiveChannel(0), channelID(
 {
 }
 
-
 ne7ssh_session::~ne7ssh_session()
 {
 }

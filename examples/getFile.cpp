@@ -11,24 +11,26 @@ PasswordAuthentication yes
 
 #include <ne7ssh.h>
 #include <stdio.h>
-int main(int argc,char *argv[])
+int main(int argc, char* argv[])
 {
     int channel1;
-    ne7ssh *_ssh = new ne7ssh();
+    ne7ssh* _ssh = new ne7ssh();
     int filesize = 0;
-    FILE *testFi;
+    FILE* testFi;
 
     // Set SSH connection options.
-    _ssh->setOptions ("aes256-cbc", "hmac-md5");
+    _ssh->setOptions("aes256-cbc", "hmac-md5");
 
     // Initiate connection without starting a remote shell.
-    channel1 = _ssh->connectWithPassword ("remote-server", 22, "remoteUser", "password", 0);
+    channel1 = _ssh->connectWithPassword("remote-server", 22, "remoteUser", "password", 0);
     if (channel1 < 0)
     {
-        const char *errmsg = _ssh->errors()->pop();
+        const char* errmsg = _ssh->errors()->pop();
         if (errmsg == NULL)
+        {
             errmsg = "<null>";
-        printf ("Connection failed with last error: %s\n\n", errmsg);
+        }
+        printf("Connection failed with last error: %s\n\n", errmsg);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -36,12 +38,14 @@ int main(int argc,char *argv[])
     // cat the remote file, works only on Unix systems. You may need to sepcifiy full path to cat.
     // Timeout after 100 seconds.
 
-    if (!_ssh->sendCmd ("cat ~/test.bin", channel1, 100))
+    if (!_ssh->sendCmd("cat ~/test.bin", channel1, 100))
     {
-        const char *errmsg = _ssh->errors()->pop(channel1);
+        const char* errmsg = _ssh->errors()->pop(channel1);
         if (errmsg == NULL)
+        {
             errmsg = "<null>";
-        printf ("Command failed with last error: %s\n\n", errmsg);
+        }
+        printf("Command failed with last error: %s\n\n", errmsg);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -50,20 +54,21 @@ int main(int argc,char *argv[])
     filesize = _ssh->getReceivedSize(channel1);
 
     // Open a local file.
-    testFi = fopen ("./test.bin", "wb");
+    testFi = fopen("./test.bin", "wb");
 
     // Write binary data from the receive buffer to the opened file.
-    if (!fwrite (_ssh->readBinary(channel1), (size_t) filesize, 1, testFi))
+    if (!fwrite(_ssh->readBinary(channel1), (size_t) filesize, 1, testFi))
     {
-        printf ("Error Writting to file\n\n");
+        printf("Error Writting to file\n\n");
         return EXIT_FAILURE;
     }
 
     // Close the files.
-    fclose (testFi);
+    fclose(testFi);
 
     // Destroy the instance.
     delete _ssh;
 
     return EXIT_SUCCESS;
 }
+
