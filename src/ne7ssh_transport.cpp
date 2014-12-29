@@ -354,7 +354,7 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     }
     return true;
 }
-
+#include <stdio.h>
 short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
 {
     ne7ssh_crypt* _crypto = session->crypto;
@@ -439,7 +439,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
     decrypted.set(tmpVar);
     if (_crypto->isInited())
     {
-        while (((cryptoLen + _crypto->getMacInLen()) > in.size()) || (in.size() % _crypto->getDecryptBlock()))
+        while (((cryptoLen + _crypto->getMacInLen()) > in.size())/* || (in.size() % _crypto->getDecryptBlock())*/)
         {
             if (!receive(in, true))
             {
