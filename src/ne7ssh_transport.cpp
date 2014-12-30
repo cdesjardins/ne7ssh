@@ -354,6 +354,7 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     }
     return true;
 }
+
 #include <stdio.h>
 short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
 {
@@ -417,17 +418,21 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
         else
         {
             while (in.size() < 4)
+            {
                 if (!receive(in, true))
                 {
                     return -1;
                 }
+            }
 
             cryptoLen = ntohl(*((int*)in.begin())) + sizeof(uint32);
             while (in.size() < cryptoLen)
+            {
                 if (!receive(in, true))
                 {
                     return -1;
                 }
+            }
 
             tmpVar.set(in);
         }

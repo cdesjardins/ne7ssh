@@ -756,7 +756,9 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
     memcpy(buffer, filename, len);
 
     while (isspace(buffer[i]))
+    {
         i++;
+    }
 
     for (pos = 0; i < len; i++)
     {
@@ -772,7 +774,9 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
     }
     pos--;
     while (isspace(buffer[pos]))
+    {
         pos--;
+    }
     if (pos > 1 && buffer[pos] == '.' && buffer[pos - 1] != '.')
     {
         pos--;
@@ -802,7 +806,9 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
         }
     }
     while (buffer[pos] == '/')
+    {
         pos--;
+    }
     buffer[++pos] = 0x00;
     result.append((uint8*)buffer, pos);
     free(buffer);

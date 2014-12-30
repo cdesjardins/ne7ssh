@@ -368,7 +368,9 @@ bool ne7ssh_connection::checkRemoteVersion()
     {
         _pos = remoteVer.end() - 1;
         while (*_pos == '\r' || *_pos == '\n')
+        {
             _pos--;
+        }
         tmpVar.set(remoteVer.begin(), _pos - remoteVer.begin() + 1);
         session->setRemoteVersion(tmpVar);
         return true;
