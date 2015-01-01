@@ -24,7 +24,8 @@ int main(int argc, char* argv[])
     _ssh->setOptions("aes128-cbc", "hmac-sha1");
 
     // Initiate connection.
-    channel1 = _ssh->connectWithKey("remoteHost", 22, "remoteUsr", "/local/path/to/privKeyFile");
+    //channel1 = _ssh->connectWithKey("remoteHost", 22, "remoteUsr", "/local/path/to/privKeyFile");
+    channel1 = _ssh->connectWithKey("192.168.1.19", 22, "debian", "/home/chrisd/.ssh/id_rsa");
     if (channel1 < 0)
     {
         const char* errmsg = _ssh->errors()->pop();
