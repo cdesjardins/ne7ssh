@@ -41,7 +41,7 @@ Botan::SecureVector<Botan::byte> &Ne7sshSftpPacket::value()
 
     if (this->channel < 0)
     {
-        buffer.destroy();
+        buffer.clear();
         return buffer;
     }
 
@@ -60,7 +60,7 @@ Botan::SecureVector<Botan::byte> Ne7sshSftpPacket::valueFragment(uint32 len)
 
     if (this->channel < 0)
     {
-        buffer.destroy();
+        buffer.clear();
         return Botan::SecureVector<Botan::byte>();
     }
 
@@ -112,7 +112,7 @@ uint64 Ne7sshSftpPacket::getInt64()
     result |= (uint64)converter[6] << 8;
     result |= (uint64)converter[7];
 
-    buffer.set(tmpVar.begin() + sizeof(uint64), tmpVar.size() - sizeof(uint64));
+    buffer= SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint64), tmpVar.size() - sizeof(uint64));
     return result;
 }
 

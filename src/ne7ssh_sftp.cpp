@@ -376,7 +376,7 @@ bool Ne7sshSftp::handleSftpData(Botan::SecureVector<Botan::byte>& packet)
     }
 
     commBuffer.clear();
-    fileBuffer.destroy();
+    fileBuffer.clear();
     fileBuffer.swap(data);
     return true;
 }
@@ -426,7 +426,7 @@ bool Ne7sshSftp::handleNames(Botan::SecureVector<Botan::byte>& packet)
             attrs.mtime = sftpBuffer.getInt();
         }
     }
-    fileBuffer.append(tmpVar.value());
+    fileBuffer += tmpVar.value();
 
     return true;
 }
@@ -786,7 +786,7 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
         buffer[pos] = 0;
     }
 
-    result.destroy();
+    result.clear();
     if ((buffer[0] != '/') && currentPath)
     {
         if (currentPath)
@@ -798,11 +798,11 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
             free(buffer);
             return ne7ssh_string();
         }
-        result.append((uint8*)currentPath, len);
+        result += SecureVector<Botan::byte>((uint8*)currentPath, len);
         last_char = len - 1;
         if (currentPath[last_char] && currentPath[last_char] != '/')
         {
-            result.append((uint8*)"/", 1);
+            result += SecureVector<Botan::byte>((uint8*)"/", 1);
         }
     }
     while (buffer[pos] == '/')
@@ -810,7 +810,7 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
         pos--;
     }
     buffer[++pos] = 0x00;
-    result.append((uint8*)buffer, pos);
+    result += SecureVector<Botan::byte>((uint8*)buffer, pos);
     free(buffer);
     return ne7ssh_string(result, 0);
 }
@@ -1040,7 +1040,7 @@ bool Ne7sshSftp::get(const char* remoteFile, FILE* localFile)
         {
             return false;
         }
-        localBuffer.destroy();
+        localBuffer.clear();
         localBuffer.swap(fileBuffer);
 
         if (!fwrite(localBuffer.begin(), (size_t) localBuffer.size(), 1, localFile))
@@ -1302,7 +1302,7 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
     {
         return 0;
     }
-    fileBuffer.destroy();
+    fileBuffer.clear();
 
     while (status)
     {
@@ -1339,14 +1339,14 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
     for (i = 0; i < fileCount; i++)
     {
         packet.getString(fileName);
-        fileName.append((const Botan::byte*)"\n", 1);
+        fileName += SecureVector<Botan::byte>((const Botan::byte*)"\n", 1);
         if (!longNames)
         {
             tmpVar.addVector(fileName);
         }
 
         packet.getString(fileName);
-        fileName.append((const Botan::byte*)"\n", 1);
+        fileName += SecureVector<Botan::byte>((const Botan::byte*)"\n", 1);
         if (longNames)
         {
             tmpVar.addVector(fileName);
@@ -1379,7 +1379,7 @@ bool Ne7sshSftp::cd(const char* remoteDir)
         return false;
     }
 
-    fileBuffer.destroy();
+    fileBuffer.clear();
 
     packet.addChar(SSH2_FXP_REALPATH);
     packet.addInt(this->seq++);

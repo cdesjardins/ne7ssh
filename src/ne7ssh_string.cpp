@@ -29,14 +29,14 @@ ne7ssh_string::ne7ssh_string() : positions(0), parts(0)
 
 ne7ssh_string::ne7ssh_string(Botan::SecureVector<Botan::byte>& var, uint32 position) : positions(0), parts(0)
 {
-    buffer.set((var.begin() + position), (var.size() - position));
+    buffer = SecureVector<Botan::byte>((var.begin() + position), (var.size() - position));
 }
 
 ne7ssh_string::ne7ssh_string(const char* var, uint32 position) : positions(0), parts(0)
 {
     char null_char = 0x0;
-    buffer.set((Botan::byte*)(var + position), (u32bit) (strlen(var) - position));
-    buffer.append((Botan::byte*) &null_char, 1);
+    buffer = SecureVector<Botan::byte>((Botan::byte*)(var + position), (u32bit) (strlen(var) - position));
+    buffer += SecureVector<Botan::byte>((Botan::byte*) &null_char, 1);
 }
 
 ne7ssh_string::~ne7ssh_string()
@@ -53,8 +53,8 @@ void ne7ssh_string::addString(const char* str)
     size_t len = strlen(str);
     uint32 nLen = htonl((long) len);
 
-    buffer.append((Botan::byte*)&nLen, sizeof(uint32));
-    buffer.append(value, (u32bit) len);
+    buffer += SecureVector<Botan::byte>((Botan::byte*)&nLen, sizeof(uint32));
+    buffer += SecureVector<Botan::byte>(value, (u32bit) len);
 }
 
 bool ne7ssh_string::addFile(const char* filename)
@@ -76,7 +76,7 @@ bool ne7ssh_string::addFile(const char* filename)
     data = (Botan::byte*) malloc(size);
     fread(data, size, 1, FI);
     fclose(FI);
-    buffer.append(data, (u32bit) size);
+    buffer += SecureVector<Botan::byte>(data, (u32bit) size);
     free(data);
     return true;
 }
@@ -87,38 +87,38 @@ void ne7ssh_string::addBigInt(const Botan::BigInt& bn)
     bn2vector(converted, bn);
     uint32 nLen = htonl(converted.size());
 
-    buffer.append((Botan::byte*)&nLen, sizeof(uint32));
-    buffer.append(converted);
+    buffer += SecureVector<Botan::byte>((Botan::byte*)&nLen, sizeof(uint32));
+    buffer += SecureVector<Botan::byte>(converted);
 }
 
 void ne7ssh_string::addVectorField(const Botan::SecureVector<Botan::byte> &vector)
 {
     uint32 nLen = htonl(vector.size());
 
-    buffer.append((Botan::byte*)&nLen, sizeof(uint32));
-    buffer.append(vector);
+    buffer += SecureVector<Botan::byte>((Botan::byte*)&nLen, sizeof(uint32));
+    buffer += vector;
 }
 
 void ne7ssh_string::addBytes(const Botan::byte* buff, uint32 len)
 {
-    buffer.append(buff, len);
+    buffer += SecureVector<Botan::byte>(buff, len);
 }
 
 void ne7ssh_string::addVector(Botan::SecureVector<Botan::byte> &secvec)
 {
-    buffer.append(secvec.begin(), secvec.size());
+    buffer += SecureVector<Botan::byte>(secvec.begin(), secvec.size());
 }
 
 void ne7ssh_string::addChar(const char ch)
 {
-    buffer.append((Botan::byte*)&ch, 1);
+    buffer += SecureVector<Botan::byte>((Botan::byte*)&ch, 1);
 }
 
 void ne7ssh_string::addInt(const uint32 var)
 {
     uint32 nVar = htonl(var);
 
-    buffer.append((Botan::byte*)&nVar, sizeof(uint32));
+    buffer += SecureVector<Botan::byte>((Botan::byte*)&nVar, sizeof(uint32));
 }
 
 bool ne7ssh_string::getString(Botan::SecureVector<Botan::byte>& result)
@@ -132,8 +132,8 @@ bool ne7ssh_string::getString(Botan::SecureVector<Botan::byte>& result)
         return false;
     }
 
-    result.set(tmpVar.begin() + sizeof(uint32), len);
-    buffer.set(tmpVar.begin() + sizeof(uint32) + len, tmpVar.size() - sizeof(uint32) - len);
+    result = SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint32), len);
+    buffer = SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint32) + len, tmpVar.size() - sizeof(uint32) - len);
     return true;
 }
 
@@ -150,7 +150,7 @@ bool ne7ssh_string::getBigInt(Botan::BigInt& result)
 
     BigInt tmpBI(tmpVar.begin() + sizeof(uint32), len);
     result.swap(tmpBI);
-    buffer.set(tmpVar.begin() + sizeof(uint32) + len, tmpVar.size() - sizeof(uint32) - len);
+    buffer = SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint32) + len, tmpVar.size() - sizeof(uint32) - len);
     return true;
 }
 
@@ -160,7 +160,7 @@ uint32 ne7ssh_string::getInt()
     uint32 result;
 
     result = ntohl(*((uint32*)tmpVar.begin()));
-    buffer.set(tmpVar.begin() + sizeof(uint32), tmpVar.size() - sizeof(uint32));
+    buffer = SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint32), tmpVar.size() - sizeof(uint32));
     return result;
 }
 
@@ -170,7 +170,7 @@ Botan::byte ne7ssh_string::getByte()
     Botan::byte result;
 
     result = *(tmpVar.begin());
-    buffer.set(tmpVar.begin() + 1, tmpVar.size() - 1);
+    buffer = SecureVector<Botan::byte>(tmpVar.begin() + 1, tmpVar.size() - 1);
     return result;
 }
 
@@ -218,7 +218,7 @@ char* ne7ssh_string::nextPart()
 void ne7ssh_string::chop(uint32 nBytes)
 {
     SecureVector<Botan::byte> tmpVar(buffer);
-    buffer.set(tmpVar.begin(), tmpVar.size() - nBytes);
+    buffer = SecureVector<Botan::byte>(tmpVar.begin(), tmpVar.size() - nBytes);
 }
 
 void ne7ssh_string::bn2vector(Botan::SecureVector<Botan::byte>& result, const Botan::BigInt& bi)
@@ -232,12 +232,12 @@ void ne7ssh_string::bn2vector(Botan::SecureVector<Botan::byte>& result, const Bo
 
     if (high)
     {
-        result.set(&zero, 1);
+        result = SecureVector<Botan::byte>(&zero, 1);
     }
     else
     {
         result.clear();
     }
-    result.append(strVector);
+    result += strVector;
 }
 

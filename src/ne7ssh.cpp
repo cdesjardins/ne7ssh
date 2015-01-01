@@ -76,7 +76,7 @@ public:
         delete rng;
     }
 
-    void randomize(byte output[], u32bit length)
+    void randomize(byte output[], size_t length)
     {
         mutex.lock();
         rng->randomize(output, length);
@@ -95,7 +95,7 @@ public:
         return rng->name();
     }
 
-    void reseed(u32bit bits_to_collect)
+    void reseed(size_t bits_to_collect)
     {
         mutex.lock();
         rng->reseed(bits_to_collect);
@@ -109,7 +109,7 @@ public:
         mutex.unlock();
     }
 
-    void add_entropy(const byte in[], u32bit length)
+    void add_entropy(const byte in[], size_t length)
     {
         mutex.lock();
         rng->add_entropy(in, length);

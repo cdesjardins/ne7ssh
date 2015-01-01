@@ -128,7 +128,7 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
 #else
     privKeyEncoded = PEM_Code::encode(
         DER_Encoder().start_cons(SEQUENCE)
-        .encode(0U)
+        .encode((size_t)0U)
         .encode(n)
         .encode(e)
         .encode(d)
@@ -231,7 +231,7 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     encoder.end_sequence();
 #else
     encoder.start_cons(SEQUENCE)
-    .encode(0U)
+    .encode((size_t)0U)
     .encode(p)
     .encode(q)
     .encode(g)
@@ -263,7 +263,7 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
 
 SecureVector<Botan::byte>& ne7ssh_keys::generateSignature(Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData)
 {
-    this->signature.destroy();
+    this->signature.clear();
     switch (this->keyAlgo)
     {
         case DSA:
@@ -448,7 +448,7 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
     SecureVector<Botan::byte> keyDataRaw;
     BigInt p, q, g, y, x;
     char* start;
-    uint32 version;
+    size_t version;
 
     start = buffer + strlen(headerDSA);
     Pipe base64dec(new Base64_Decoder);
@@ -518,7 +518,7 @@ bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
     SecureVector<Botan::byte> keyDataRaw;
     BigInt p, q, e, d, n;
     char* start;
-    uint32 version;
+    size_t version;
 
     start = buffer + strlen(headerRSA);
     Pipe base64dec(new Base64_Decoder);

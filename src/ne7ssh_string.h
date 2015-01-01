@@ -65,7 +65,7 @@ public:
      */
     void clear()
     {
-        buffer.destroy();
+        buffer.clear();
     }
 
     /**

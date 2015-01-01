@@ -60,22 +60,22 @@ void ne7ssh_kex::constructLocalKex()
             len = strlen(cipher);
             if (!memcmp(cipher, ne7ssh::PREFERED_CIPHER, len))
             {
-                Ciphers.append((Botan::byte*)cipher, (uint32_t) len);
+                Ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
             }
             else
             {
-                tmpCiphers.append(',');
-                tmpCiphers.append((Botan::byte*)cipher, (uint32_t) len);
+                tmpCiphers += SecureVector<Botan::byte>(',');
+                tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
             }
         }
     }
     if (Ciphers.size())
     {
-        Ciphers.append(tmpCiphers);
+        Ciphers += tmpCiphers;
     }
     else
     {
-        Ciphers.set(myCiphers.value());
+        Ciphers = myCiphers.value();
     }
 //  Ciphers.append (&null_byte, 1);
 
@@ -89,22 +89,22 @@ void ne7ssh_kex::constructLocalKex()
             len = strlen(hmac);
             if (!memcmp(hmac, ne7ssh::PREFERED_MAC, len))
             {
-                Hmacs.append((Botan::byte*)hmac, (uint32_t) len);
+                Hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
             }
             else
             {
-                tmpMacs.append(',');
-                tmpMacs.append((Botan::byte*)hmac, (uint32_t) len);
+                tmpMacs += SecureVector<Botan::byte>(',');
+                tmpMacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
             }
         }
     }
     if (Hmacs.size())
     {
-        Hmacs.append(tmpMacs);
+        Hmacs += SecureVector<Botan::byte>(tmpMacs);
     }
     else
     {
-        Hmacs.set(myMacs.value());
+        Hmacs = myMacs.value();
     }
 //  Hmacs.append (&null_byte, 1);
 
@@ -277,7 +277,7 @@ bool ne7ssh_kex::handleInit()
 
     return true;
 }
-
+#include <stdio.h>
 bool ne7ssh_kex::sendKexDHInit()
 {
     ne7ssh_string dhInit;
@@ -301,8 +301,10 @@ bool ne7ssh_kex::sendKexDHInit()
     {
         return false;
     }
+    printf("Waiting for SSH2_MSG_KEXDH_REPLY\n");
     if (!_transport->waitForPacket(SSH2_MSG_KEXDH_REPLY))
     {
+        printf("Waiting for SSH2_MSG_KEXDH_REPLY failed\n");
         ne7ssh::errors()->push(session->getSshChannel(), "Timeout while waiting for key exchange dh reply.");
         return false;
     }
@@ -315,6 +317,10 @@ bool ne7ssh_kex::handleKexDHReply()
     ne7ssh_crypt* _crypto = session->crypto;
     SecureVector<Botan::byte> packet;
     _transport->getPacket(packet);
+    if (packet.empty() == true)
+    {
+        return false;
+    }
     ne7ssh_string remoteKexDH(packet, 1);
     SecureVector<Botan::byte> field, fVector, hSig, kVector, hVector;
     BigInt publicKey;
@@ -347,7 +353,7 @@ bool ne7ssh_kex::handleKexDHReply()
     k.addVector(kVector);
 
     makeH(hVector);
-    if (hVector.is_empty())
+    if (hVector.empty())
     {
         return false;
     }

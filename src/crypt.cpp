@@ -97,7 +97,7 @@ bool ne7ssh_crypt::agree(Botan::SecureVector<Botan::byte> &result, const char* l
     }
     if (match)
     {
-        result.set((Botan::byte*)localAlgo, (uint32_t) len);
+        result = Botan::SecureVector<Botan::byte>((Botan::byte*)localAlgo, (uint32_t) len);
         return true;
     }
     else
@@ -340,7 +340,7 @@ bool ne7ssh_crypt::computeH(Botan::SecureVector<Botan::byte> &result, Botan::Sec
         return false;
     }
     H = hashIt->process(val);
-    result.set(H);
+    result = H;
     delete (hashIt);
     return true;
 }
@@ -354,7 +354,7 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
     SecureVector<Botan::byte> sigType, sigData;
     bool result;
 
-    if (H.is_empty())
+    if (H.empty())
     {
         ne7ssh::errors()->push(session->getSshChannel(), "H was not initialzed.");
         return false;
@@ -508,7 +508,11 @@ RSA_PublicKey* ne7ssh_crypt::getRSAKey(Botan::SecureVector<Botan::byte> &hostKey
 
 bool ne7ssh_crypt::makeKexSecret(Botan::SecureVector<Botan::byte> &result, Botan::BigInt &f)
 {
-    SymmetricKey negotiated = privKexKey->derive_key(f);
+    DH_KA_Operation dhop(*privKexKey);
+    byte *buf = new byte[f.bytes()];
+    Botan::BigInt::encode(buf, f);
+    SymmetricKey negotiated = dhop.agree(buf, f.bytes());
+    delete []buf;
     if (!negotiated.length())
     {
         return false;
@@ -516,7 +520,7 @@ bool ne7ssh_crypt::makeKexSecret(Botan::SecureVector<Botan::byte> &result, Botan
 
     BigInt Kint(negotiated.begin(), negotiated.length());
     ne7ssh_string::bn2vector(result, Kint);
-    K.set(result);
+    K = result;
     delete privKexKey;
     privKexKey = 0;
     return true;
@@ -815,7 +819,7 @@ bool ne7ssh_crypt::compute_key(Botan::SecureVector<Botan::byte>& key, Botan::byt
     hashBytes.addVector(session->getSessionID());
 
     hash = hashIt->process(hashBytes.value());
-    newKey.set(hash);
+    newKey = hash;
     len = newKey.size();
 
     while (len < nBytes)
@@ -825,11 +829,10 @@ bool ne7ssh_crypt::compute_key(Botan::SecureVector<Botan::byte>& key, Botan::byt
         hashBytes.addVector(H);
         hashBytes.addVector(newKey);
         hash = hashIt->process(hashBytes.value());
-        newKey.append(hash);
+        newKey += hash;
         len = newKey.size();
     }
-
-    key.set(newKey.begin(), nBytes);
+    key = Botan::SecureVector<Botan::byte>(newKey.begin(), nBytes);
     delete (hashIt);
     return true;
 }
@@ -847,8 +850,8 @@ bool ne7ssh_crypt::encryptPacket(Botan::SecureVector<Botan::byte> &crypted, Bota
 
     if (hmacOut)
     {
-        macStr.set((Botan::byte*)&nSeq, 4);
-        macStr.append(packet);
+        macStr = SecureVector<Botan::byte>((Botan::byte*)&nSeq, 4);
+        macStr += packet;
         hmac = hmacOut->process(macStr);
     }
 
@@ -886,7 +889,7 @@ void ne7ssh_crypt::compressData(Botan::SecureVector<Botan::byte> &buffer)
     tmpVar.swap(buffer);
     compress->process_msg(tmpVar);
     tmpVar = compress->read_all(compress->message_count() - 1);
-    buffer.set(tmpVar);
+    buffer = tmpVar;
 }
 
 void ne7ssh_crypt::decompressData(Botan::SecureVector<Botan::byte> &buffer)
@@ -900,7 +903,7 @@ void ne7ssh_crypt::decompressData(Botan::SecureVector<Botan::byte> &buffer)
     tmpVar.swap(buffer);
     decompress->process_msg(tmpVar);
     tmpVar = decompress->read_all(compress->message_count() - 1);
-    buffer.set(tmpVar);
+    buffer = tmpVar;
 }
 
 void ne7ssh_crypt::computeMac(Botan::SecureVector<Botan::byte> &hmac, Botan::SecureVector<Botan::byte> &packet, uint32 seq)
@@ -910,13 +913,13 @@ void ne7ssh_crypt::computeMac(Botan::SecureVector<Botan::byte> &hmac, Botan::Sec
 
     if (hmacIn)
     {
-        macStr.set((Botan::byte*)&nSeq, 4);
-        macStr.append(packet);
+        macStr = SecureVector<Botan::byte>((Botan::byte*)&nSeq, 4);
+        macStr += packet;
         hmac = hmacIn->process(macStr);
     }
     else
     {
-        hmac.destroy();
+        hmac.clear();
     }
 }
 
