@@ -64,7 +64,7 @@ void ne7ssh_kex::constructLocalKex()
             }
             else
             {
-                tmpCiphers += SecureVector<Botan::byte>(',');
+                tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)",", 1);
                 tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
             }
         }
@@ -93,7 +93,7 @@ void ne7ssh_kex::constructLocalKex()
             }
             else
             {
-                tmpMacs += SecureVector<Botan::byte>(',');
+                tmpMacs += SecureVector<Botan::byte>((Botan::byte*)",", 1);
                 tmpMacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
             }
         }
@@ -277,7 +277,7 @@ bool ne7ssh_kex::handleInit()
 
     return true;
 }
-#include <stdio.h>
+
 bool ne7ssh_kex::sendKexDHInit()
 {
     ne7ssh_string dhInit;
@@ -301,10 +301,9 @@ bool ne7ssh_kex::sendKexDHInit()
     {
         return false;
     }
-    printf("Waiting for SSH2_MSG_KEXDH_REPLY\n");
+
     if (!_transport->waitForPacket(SSH2_MSG_KEXDH_REPLY))
     {
-        printf("Waiting for SSH2_MSG_KEXDH_REPLY failed\n");
         ne7ssh::errors()->push(session->getSshChannel(), "Timeout while waiting for key exchange dh reply.");
         return false;
     }

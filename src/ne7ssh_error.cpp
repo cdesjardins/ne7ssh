@@ -12,10 +12,10 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
 
+#include <botan/secmem.h>
 #include "ne7ssh_error.h"
 #include <string.h>
 #include <cstdio>
-#include <botan/secmem.h>
 #include "stdarg.h"
 #include "ne7ssh.h"
 

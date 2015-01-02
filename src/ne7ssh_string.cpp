@@ -19,6 +19,8 @@
 #include <cstdio>
 #if !defined(WIN32) && !defined(__MINGW32__)
 #   include <arpa/inet.h>
+#else
+#   include <Winsock2.h>
 #endif
 
 using namespace Botan;

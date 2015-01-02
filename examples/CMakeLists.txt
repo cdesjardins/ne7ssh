@@ -1,3 +1,4 @@
+include_directories ( ../src ${HAVE_BOTAN} )
 add_executable( generateKeys generateKeys.cpp )
 add_executable( getFile getFile.cpp )
 add_executable( keyAuth keyAuth.cpp )

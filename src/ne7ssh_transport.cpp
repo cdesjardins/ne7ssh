@@ -354,7 +354,7 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     }
     return true;
 }
-#include <stdio.h>
+
 short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
 {
     ne7ssh_crypt* _crypto = session->crypto;
@@ -396,12 +396,10 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
     {
         if (bufferOnly)
         {
-            printf("Buffer only\n");
             return 0;
         }
         if (!receive(in))
         {
-            printf("no receive 1\n");
             return 0;
         }
 
@@ -422,7 +420,6 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             {
                 if (!receive(in, true))
                 {
-                    printf("no receive 2\n");
                     return 0;
                 }
             }
@@ -432,7 +429,6 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             {
                 if (!receive(in, true))
                 {
-                    printf("no receive 3\n");
                     return 0;
                 }
             }
@@ -451,7 +447,6 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
         {
             if (!receive(in, true))
             {
-                printf("no receive 4\n");
                 return 0;
             }
         }
@@ -471,7 +466,6 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             if (hMac != ourMac)
             {
                 ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Mismatched HMACs.");
-                printf("Mismatched HMACs\n");
                 return 0;
             }
             cryptoLen += _crypto->getMacInLen();
@@ -501,7 +495,6 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
     if (cmd == _cmd || !cmd)
     {
         inBuffer = decrypted;
-        printf("Assigned inBuffer\n");
         if (!(in.size() - cryptoLen))
         {
             in.clear();
@@ -511,12 +504,10 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             tmpVar.swap(in);
             in = SecureVector<Botan::byte>(tmpVar.begin() + cryptoLen, tmpVar.size() - cryptoLen);
         }
-        printf("return cmd\n");
         return _cmd;
     }
     else
     {
-        printf("return 0\n");
         return 0;
     }
 }
