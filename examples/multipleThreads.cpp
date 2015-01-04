@@ -30,7 +30,7 @@ struct ssh_thrarg_t
     int     thrid;
 };
 
-int main(int argc, char* argv[])
+int main(/*int argc, char* argv[]*/)
 {
     ne7ssh* _ssh = new ne7ssh();
 

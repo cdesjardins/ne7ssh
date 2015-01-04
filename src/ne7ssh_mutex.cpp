@@ -33,15 +33,16 @@ Ne7ssh_Mutex::Ne7ssh_Mutex()
 int Ne7ssh_Mutex::lock()
 {
 #if defined(WIN32) || defined(__MINGW32__)
+    int ret = -1;
     try
     {
         EnterCriticalSection(&mutint);
-        return 0;
+        ret = 0;
     }
     catch (...)
     {
-        return -1;
     }
+    return ret;
 #else
     return pthread_mutex_lock(&mutint);
 #endif

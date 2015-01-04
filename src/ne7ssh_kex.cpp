@@ -55,19 +55,23 @@ void ne7ssh_kex::constructLocalKex()
         myCiphers.split(',');
         myCiphers.resetParts();
 
-        while ((cipher = myCiphers.nextPart()))
+        do
         {
-            len = strlen(cipher);
-            if (!memcmp(cipher, ne7ssh::PREFERED_CIPHER, len))
+            cipher = myCiphers.nextPart();
+            if (cipher != NULL)
             {
-                Ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
+                len = strlen(cipher);
+                if (!memcmp(cipher, ne7ssh::PREFERED_CIPHER, len))
+                {
+                    Ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
+                }
+                else
+                {
+                    tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)",", 1);
+                    tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
+                }
             }
-            else
-            {
-                tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)",", 1);
-                tmpCiphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
-            }
-        }
+        } while (cipher != NULL);
     }
     if (Ciphers.size())
     {
@@ -84,19 +88,23 @@ void ne7ssh_kex::constructLocalKex()
         myMacs.split(',');
         myMacs.resetParts();
 
-        while ((hmac = myMacs.nextPart()))
+        do
         {
-            len = strlen(hmac);
-            if (!memcmp(hmac, ne7ssh::PREFERED_MAC, len))
+            hmac = myMacs.nextPart();
+            if (hmac != NULL)
             {
-                Hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
+                len = strlen(hmac);
+                if (!memcmp(hmac, ne7ssh::PREFERED_MAC, len))
+                {
+                    Hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
+                }
+                else
+                {
+                    tmpMacs += SecureVector<Botan::byte>((Botan::byte*)",", 1);
+                    tmpMacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
+                }
             }
-            else
-            {
-                tmpMacs += SecureVector<Botan::byte>((Botan::byte*)",", 1);
-                tmpMacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
-            }
-        }
+        } while (hmac != NULL);
     }
     if (Hmacs.size())
     {

@@ -104,7 +104,7 @@ public:
      * @param timeout Timeout for the connection procedure, in seconds.
      * @return A newly assigned channel ID, or -1 if connection failed.
      */
-    int connectWithPassword(uint32 channelID, const char* host, uint32 port, const char* username, const char* password, bool shell = true, int timeout = 0);
+    int connectWithPassword(uint32 channelID, const char* host, short port, const char* username, const char* password, bool shell = true, int timeout = 0);
 
     /**
      * Connects to a remote host using SSH protocol version 2, with publickey based authentication.
@@ -117,7 +117,7 @@ public:
      * @param timeout Timeout for the connection procedure, in seconds.
      * @return A newly assigned channel ID, or -1 if connection failed.
      */
-    int connectWithKey(uint32 channelID, const char* host, uint32 port, const char* username, const char* privKeyFileName, bool shell = true, int timeout = 0);
+    int connectWithKey(uint32 channelID, const char* host, short port, const char* username, const char* privKeyFileName, bool shell = true, int timeout = 0);
 
     /**
      * Retrieves the tcp socket number.

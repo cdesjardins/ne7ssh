@@ -48,7 +48,7 @@ WSockInitializer _wsock32_;
 
 using namespace Botan;
 
-ne7ssh_transport::ne7ssh_transport(ne7ssh_session* _session) : seq(0), rSeq(0), session(_session), sock(-1)
+ne7ssh_transport::ne7ssh_transport(ne7ssh_session* _session) : seq(0), rSeq(0), session(_session), sock((SOCKET)-1)
 {
 }
 
@@ -60,7 +60,7 @@ ne7ssh_transport::~ne7ssh_transport()
     }
 }
 
-SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
+SOCKET ne7ssh_transport::establish(const char* host, short port, int timeout)
 {
     sockaddr_in remoteAddr;
     hostent* remoteHost;
@@ -69,7 +69,7 @@ SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
     if (!remoteHost || remoteHost->h_length == 0)
     {
         ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Host: '%s' not found.", host);
-        return -1;
+        return (SOCKET)-1;
     }
     remoteAddr.sin_family = AF_INET;
     remoteAddr.sin_addr.s_addr = *(long*) remoteHost->h_addr_list[0];
@@ -79,7 +79,7 @@ SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
     if (sock < 0)
     {
         ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Failure to bind to socket.");
-        return -1;
+        return (SOCKET)-1;
     }
 
     if (timeout < 1)
@@ -87,12 +87,12 @@ SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
         if (connect(sock, (struct sockaddr*) &remoteAddr, sizeof(remoteAddr)))
         {
             ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Unable to connect to remote server: '%s'.", host);
-            return -1;
+            return (SOCKET)-1;
         }
 
         if (!NoBlock(sock, true))
         {
-            return -1;
+            return (SOCKET)-1;
         }
         else
         {
@@ -103,7 +103,7 @@ SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
     {
         if (!NoBlock(sock, true))
         {
-            return -1;
+            return (SOCKET)-1;
         }
 
         if (connect(sock, (struct sockaddr*) &remoteAddr, sizeof(remoteAddr)) == -1)
@@ -115,8 +115,14 @@ SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
             waitTime.tv_usec = 0;
 
             FD_ZERO(&rfds);
+#if defined(WIN32)
+#pragma warning(push)
+#pragma warning(disable : 4127)
+#endif
             FD_SET(sock, &rfds);
-
+#if defined(WIN32)
+#pragma warning(pop)
+#endif
             int status;
             status = select(sock + 1, &rfds, NULL, NULL, &waitTime);
 
@@ -125,13 +131,13 @@ SOCKET ne7ssh_transport::establish(const char* host, uint32 port, int timeout)
                 if (!FD_ISSET(sock, &rfds))
                 {
                     ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Couldn't connect to remote server : timeout");
-                    return -1;
+                    return (SOCKET)-1;
                 }
             }
             if (status < 0)
             {
                 ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Couldn't connect to remote server during select");
-                return -1;
+                return (SOCKET)-1;
             }
         }
         return sock;
@@ -158,7 +164,7 @@ bool ne7ssh_transport::NoBlock(SOCKET socket, bool on)
     }
     fcntl(socket, F_SETFL, options);
 #else
-    unsigned long options = 1;
+    unsigned long options = on;
     if (ioctlsocket(socket, FIONBIO, &options))
     {
         ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Cannot set asynch I/O on the socket: %i.", (int)socket);
@@ -185,6 +191,10 @@ bool ne7ssh_transport::wait(SOCKET socket, int rw, int timeout)
         waitTime.tv_usec = 0;
     }
 
+#if defined(WIN32)
+#pragma warning(push)
+#pragma warning(disable : 4127)
+#endif
     if (!rw)
     {
         FD_ZERO(&rfds);
@@ -195,6 +205,9 @@ bool ne7ssh_transport::wait(SOCKET socket, int rw, int timeout)
         FD_ZERO(&wfds);
         FD_SET(socket, &wfds);
     }
+#if defined(WIN32)
+#pragma warning(pop)
+#endif
 
     if (!rw)
     {
@@ -315,7 +328,7 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
         crypt_block = 8;
     }
 
-    padLen = 3 + crypt_block - ((length + 8) % crypt_block);
+    padLen = (char)(3 + crypt_block - ((length + 8) % crypt_block));
     packetLen = 1 + length + padLen;
 
     out.addInt(packetLen);
@@ -400,7 +413,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
         }
         if (!receive(in))
         {
-            return 0;
+            return -1;
         }
 
         if (_crypto->isInited())
@@ -420,7 +433,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             {
                 if (!receive(in, true))
                 {
-                    return 0;
+                    return -1;
                 }
             }
 
@@ -429,7 +442,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             {
                 if (!receive(in, true))
                 {
-                    return 0;
+                    return -1;
                 }
             }
 
@@ -447,7 +460,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
         {
             if (!receive(in, true))
             {
-                return 0;
+                return -1;
             }
         }
         if (cryptoLen > _crypto->getDecryptBlock())
@@ -466,7 +479,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             if (hMac != ourMac)
             {
                 ne7ssh::errors()->push(((ne7ssh_session*)session)->getSshChannel(), "Mismatched HMACs.");
-                return 0;
+                return -1;
             }
             cryptoLen += _crypto->getMacInLen();
         }

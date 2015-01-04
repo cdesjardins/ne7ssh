@@ -242,7 +242,7 @@ const char* Ne7sshError::pop(int32 channel)
     {
         len = strlen(result) < MAX_ERROR_LEN ? strlen(result) : MAX_ERROR_LEN;
         memcpy(popedErr, result, len + 1);
-        deleteRecord(recID);
+        deleteRecord((uint16)recID);
     }
     else
     {

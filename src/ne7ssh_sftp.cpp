@@ -142,7 +142,6 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
     {
         case SSH2_FXP_VERSION:
             return handleVersion(mainBuffer.value());
-            break;
 
         case SSH2_FXP_HANDLE:
             return addOpenHandle(mainBuffer.value());
@@ -161,10 +160,9 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
 
         default:
             ne7ssh::errors()->push(session->getSshChannel(), "Unhandled SFTP subsystem command: %i.", _cmd);
-            return false;
     }
 
-    return true;
+    return false;
 }
 
 bool Ne7sshSftp::receiveWindowAdjust()
@@ -185,21 +183,22 @@ bool Ne7sshSftp::receiveWindowAdjust()
     return true;
 }
 
-bool Ne7sshSftp::receiveUntil(short _cmd, uint32 timeSec)
+bool Ne7sshSftp::receiveUntil(uint8 _cmd, uint32 timeSec)
 {
     ne7ssh_transport* _transport = session->transport;
     SecureVector<Botan::byte> packet;
     uint32 cutoff = timeSec * 1000000, timeout = 0;
     uint32 prevSize = 0;
-    bool status;
+    short status;
+    bool forever = true;
 
     this->sftpCmd = 0;
     commBuffer.clear();
 
-    while (true)
+    while (forever)
     {
         status = _transport->waitForPacket(0, false);
-        if (status)
+        if (status > 0)
         {
             _transport->getPacket(packet);
             if (!handleReceived(packet))
@@ -237,21 +236,22 @@ bool Ne7sshSftp::receiveUntil(short _cmd, uint32 timeSec)
     return false;
 }
 
-bool Ne7sshSftp::receiveWhile(short _cmd, uint32 timeSec)
+bool Ne7sshSftp::receiveWhile(uint8 _cmd, uint32 timeSec)
 {
     ne7ssh_transport* _transport = session->transport;
     SecureVector<Botan::byte> packet;
     uint32 cutoff = timeSec * 1000000, timeout = 0;
     uint32 prevSize = 0;
-    bool status;
+    short status;
+    bool forever = true;
 
     this->sftpCmd = _cmd;
     commBuffer.clear();
 
-    while (true)
+    while (forever)
     {
         status = _transport->waitForPacket(0, false);
-        if (status)
+        if (status > 0)
         {
             _transport->getPacket(packet);
             if (!handleReceived(packet))
@@ -322,7 +322,7 @@ bool Ne7sshSftp::handleStatus(Botan::SecureVector<Botan::byte>& packet)
 
     if (errorID)
     {
-        lastError = errorID;
+        lastError = (uint8)errorID;
         ne7ssh::errors()->push(session->getSshChannel(), "SFTP Error code: <%i>, description: %s.", errorID, errorStr.begin());
         return false;
     }
@@ -334,7 +334,7 @@ bool Ne7sshSftp::addOpenHandle(Botan::SecureVector<Botan::byte>& packet)
     ne7ssh_string sftpBuffer(packet, 0);
     uint32 requestID;
     SecureVector<Botan::byte> handle;
-    uint16 len;
+    size_t len;
 
     requestID = sftpBuffer.getInt();
     sftpBuffer.getString(handle);
@@ -356,7 +356,7 @@ bool Ne7sshSftp::addOpenHandle(Botan::SecureVector<Botan::byte>& packet)
         len = 256;
     }
     memcpy(sftpFiles[sftpFilesCount]->handle, handle.begin(), len);
-    sftpFiles[sftpFilesCount]->handleLen = len;
+    sftpFiles[sftpFilesCount]->handleLen = (uint16)len;
     sftpFilesCount++;
     return true;
 }
@@ -927,7 +927,7 @@ bool Ne7sshSftp::getFileAttrs(Ne7SftpSubsystem::fileAttrs& attributes, const cha
         return false;
     }
 
-    if (!getFileStats((const char*)fullPath.value().begin()))
+    if (!getFileStats((const char*)fullPath.value().begin(), followSymLinks))
     {
         ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
@@ -949,7 +949,7 @@ bool Ne7sshSftp::getFileAttrs(sftpFileAttrs& attributes, Botan::SecureVector<Bot
     {
         return false;
     }
-    if (!getFileStats((const char*)remoteFile.begin()))
+    if (!getFileStats((const char*)remoteFile.begin(), followSymLinks))
     {
         ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
@@ -1007,7 +1007,7 @@ bool Ne7sshSftp::isDir(const char* remoteFile)
 
 bool Ne7sshSftp::get(const char* remoteFile, FILE* localFile)
 {
-    uint32 size;
+    uint64 size;
     uint64 offset = 0;
     Botan::SecureVector<Botan::byte> localBuffer;
     uint32 fileID;
@@ -1061,11 +1061,11 @@ bool Ne7sshSftp::get(const char* remoteFile, FILE* localFile)
 bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
 {
     size_t size;
-    uint64 offset = 0;
+    size_t offset = 0;
     Botan::SecureVector<Botan::byte> localBuffer;
     uint32 fileID;
     uint8* buffer = 0;
-    uint32 len;
+    size_t len;
 
     if (!localFile || !remoteFile)
     {

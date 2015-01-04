@@ -70,7 +70,7 @@ bool ne7ssh_crypt::agree(Botan::SecureVector<Botan::byte> &result, const char* l
     ne7ssh_string remoteAlgos(remote, 0);
     char* localAlgo, * remoteAlgo;
     bool match;
-    size_t len;
+    size_t len = 0;
 
     localAlgos.split(',');
     localAlgos.resetParts();
@@ -78,23 +78,31 @@ bool ne7ssh_crypt::agree(Botan::SecureVector<Botan::byte> &result, const char* l
     remoteAlgos.resetParts();
 
     match = false;
-    while ((localAlgo = localAlgos.nextPart()))
+    do
     {
-        len = strlen(localAlgo);
-        while ((remoteAlgo = remoteAlgos.nextPart()))
+        localAlgo = localAlgos.nextPart();
+        if (localAlgo != NULL)
         {
-            if (!memcmp(localAlgo, remoteAlgo, len))
+            len = strlen(localAlgo);
+            do
             {
-                match = true;
+                remoteAlgo = remoteAlgos.nextPart();
+                if (remoteAlgo != NULL)
+                {
+                    if (!memcmp(localAlgo, remoteAlgo, len))
+                    {
+                        match = true;
+                        break;
+                    }
+                }
+            } while (remoteAlgo != NULL);
+            if (match)
+            {
                 break;
             }
+            remoteAlgos.resetParts();
         }
-        if (match)
-        {
-            break;
-        }
-        remoteAlgos.resetParts();
-    }
+    } while (localAlgo != NULL);
     if (match)
     {
         result = Botan::SecureVector<Botan::byte>((Botan::byte*)localAlgo, (uint32_t) len);
@@ -349,10 +357,10 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
 {
     DSA_PublicKey* dsaKey = 0;
     RSA_PublicKey* rsaKey = 0;
-    PK_Verifier* verifier;
+    PK_Verifier* verifier = NULL;
     ne7ssh_string signature(sig, 0);
     SecureVector<Botan::byte> sigType, sigData;
-    bool result;
+    bool result = false;
 
     if (H.empty())
     {
@@ -411,12 +419,17 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
             break;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Key Exchange algorithm: %i not supported.", kexMethod);
-            return false;
+            break;
     }
-
-    result = verifier->verify_message(H, sigData);
-    delete verifier;
+    if (verifier == NULL)
+    {
+        ne7ssh::errors()->push(session->getSshChannel(), "Key Exchange algorithm: %i not supported.", kexMethod);
+    }
+    else
+    {
+        result = verifier->verify_message(H, sigData);
+        delete verifier;
+    }
     if (dsaKey)
     {
         delete dsaKey;
@@ -426,7 +439,7 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
         delete dsaKey;
     }
 
-    if (!result)
+    if (result == false)
     {
         ne7ssh::errors()->push(session->getSshChannel(), "Failure to verify host signature.");
         return false;
@@ -690,7 +703,7 @@ size_t ne7ssh_crypt::max_keylength_of(const std::string& name)
         return mac->key_spec().maximum_keylength();
     }
 
-    throw Algorithm_Not_Found(name);
+    return 0;
 }
 
 bool ne7ssh_crypt::makeNewKeys()
@@ -705,6 +718,10 @@ bool ne7ssh_crypt::makeNewKeys()
 
     algo = getCryptAlgo(c2sCryptoMethod);
     key_len = max_keylength_of(algo);
+    if (key_len == 0)
+    {
+        return false;
+    }
     if (c2sCryptoMethod == BLOWFISH_CBC)
     {
         key_len = 16;
@@ -760,6 +777,10 @@ bool ne7ssh_crypt::makeNewKeys()
 
     algo = getCryptAlgo(s2cCryptoMethod);
     key_len = max_keylength_of(algo);
+    if (key_len == 0)
+    {
+        return false;
+    }
     if (s2cCryptoMethod == BLOWFISH_CBC)
     {
         key_len = 16;

@@ -12,7 +12,19 @@
 */
 
 #include <ne7ssh.h>
-#include <stdio.h>
+#include <iostream>
+
+void reportError(const std::string &tag, ne7ssh* ssh)
+{
+    const char* errmsg;
+    /* For some reason MSVC gives unreferenced param warning for ssh */
+    ssh;
+    do
+    {
+        errmsg = ssh->errors()->pop();
+        std::cerr << tag << " failed with last error: " << errmsg << std::endl;
+    } while (errmsg);
+}
 
 int main(int argc, char* argv[])
 {
@@ -21,7 +33,7 @@ int main(int argc, char* argv[])
 
     if (argc != 4)
     {
-        printf("Error: Three arguments required: %s <hostname> <username> <privatekeyfilename>\n", argv[0]);
+        std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <privatekeyfilename>" << std::endl;
         return EXIT_FAILURE;
     }
     ne7ssh* _ssh = new ne7ssh();
@@ -32,15 +44,7 @@ int main(int argc, char* argv[])
     channel1 = _ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        do
-        {
-            const char* errmsg = _ssh->errors()->pop();
-            if (errmsg == NULL)
-            {
-                break;
-            }
-            printf("Connection failed with last error: %s\n", errmsg);
-        } while (1);
+        reportError("Connection", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -48,12 +52,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds.
     if (!_ssh->waitFor(channel1, "$", 5))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
+        reportError("Wait for prompt", _ssh);
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -62,12 +61,7 @@ int main(int argc, char* argv[])
     // Send "ls" command.
     if (!_ssh->send("ls\n", channel1))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not send the command. Last error: %s\n\n", errmsg);
+        reportError("ls", _ssh);
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -76,12 +70,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds
     if (!_ssh->waitFor(channel1, "$", 5))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Timeout while waiting for remote site.Last error: %s\n\n", errmsg);
+        reportError("Wait for ls", _ssh);
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -92,16 +81,11 @@ int main(int argc, char* argv[])
 
     if (!result)
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("No data received. Last error: %s\n\n", errmsg);
+        reportError("Read", _ssh);
     }
     else
     {
-        printf("Received data:\n %s\n", result);
+        std::cout << "Received data:" << std::endl << result << std::endl;
     }
 
     // Terminate connection by sending "exit" command.

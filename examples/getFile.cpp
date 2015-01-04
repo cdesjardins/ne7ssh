@@ -10,27 +10,41 @@ PasswordAuthentication yes
 */
 
 #include <ne7ssh.h>
-#include <stdio.h>
+#include <iostream>
+
+void reportError(const std::string &tag, ne7ssh* ssh)
+{
+    const char* errmsg;
+    /* For some reason MSVC gives unreferenced param warning for ssh */
+    ssh;
+    do
+    {
+        errmsg = ssh->errors()->pop();
+        std::cerr << tag << " failed with last error: " << errmsg << std::endl;
+    } while (errmsg);
+}
+
 int main(int argc, char* argv[])
 {
     int channel1;
-    ne7ssh* _ssh = new ne7ssh();
     int filesize = 0;
     FILE* testFi;
 
+    if (argc != 4)
+    {
+        std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <password>" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    ne7ssh* _ssh = new ne7ssh();
     // Set SSH connection options.
     _ssh->setOptions("aes256-cbc", "hmac-md5");
 
     // Initiate connection without starting a remote shell.
-    channel1 = _ssh->connectWithPassword("remote-server", 22, "remoteUser", "password", 0);
+    channel1 = _ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0);
     if (channel1 < 0)
     {
-        const char* errmsg = _ssh->errors()->pop();
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Connection failed with last error: %s\n\n", errmsg);
+        reportError("Connection", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -40,12 +54,7 @@ int main(int argc, char* argv[])
 
     if (!_ssh->sendCmd("cat ~/test.bin", channel1, 100))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Command failed with last error: %s\n\n", errmsg);
+        reportError("Command", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -59,7 +68,7 @@ int main(int argc, char* argv[])
     // Write binary data from the receive buffer to the opened file.
     if (!fwrite(_ssh->readBinary(channel1), (size_t) filesize, 1, testFi))
     {
-        printf("Error Writting to file\n\n");
+        std::cerr << "Error Writting to file" << std::endl;
         return EXIT_FAILURE;
     }
 

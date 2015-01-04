@@ -107,6 +107,7 @@ bool ne7ssh_channel::adjustWindow(Botan::SecureVector<Botan::byte>& packet)
 
 bool ne7ssh_channel::handleEof(Botan::SecureVector<Botan::byte>& packet)
 {
+    UNREF_PARAM(packet);
     this->cmdComplete = true;
     windowRecv = 0;
     eof = true;
@@ -122,8 +123,7 @@ bool ne7ssh_channel::handleEof(Botan::SecureVector<Botan::byte>& packet)
 
 void ne7ssh_channel::handleClose(Botan::SecureVector<Botan::byte>& newPacket)
 {
-    ne7ssh_string packet;
-
+    UNREF_PARAM(newPacket);
     if (!closed)
     {
         sendClose();
@@ -364,8 +364,9 @@ void ne7ssh_channel::receive()
         return;
     }
 
-    while ((status = _transport->waitForPacket(0, notFirst)))
+    do
     {
+        status = _transport->waitForPacket(0, notFirst);
         if (status == -1)
         {
             eof = true;
@@ -373,13 +374,16 @@ void ne7ssh_channel::receive()
             channelOpened = false;
             return;
         }
-        if (!notFirst)
+        if (status != 0)
         {
-            notFirst = true;
+            if (!notFirst)
+            {
+                notFirst = true;
+            }
+            _transport->getPacket(packet);
+            handleReceived(packet);
         }
-        _transport->getPacket(packet);
-        handleReceived(packet);
-    }
+    } while (status != 0);
 }
 
 bool ne7ssh_channel::handleReceived(Botan::SecureVector<Botan::byte>& _packet)

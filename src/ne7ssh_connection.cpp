@@ -20,7 +20,7 @@
 
 using namespace Botan;
 
-ne7ssh_connection::ne7ssh_connection() : sock(-1), thisChannel(0), sftp(0), connected(false), cmdRunning(false), cmdClosed(false)
+ne7ssh_connection::ne7ssh_connection() : sock((SOCKET)-1), thisChannel(0), sftp(0), connected(false), cmdRunning(false), cmdClosed(false)
 {
     session = new ne7ssh_session();
     crypto = new ne7ssh_crypt(session);
@@ -43,7 +43,7 @@ ne7ssh_connection::~ne7ssh_connection()
     }
 }
 
-int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, uint32 port, const char* username, const char* password, bool shell, int timeout)
+int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, short port, const char* username, const char* password, bool shell, int timeout)
 {
     sock = transport->establish(host, port, timeout);
     if (sock == -1)
@@ -109,7 +109,7 @@ int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, u
     return thisChannel;
 }
 
-int ne7ssh_connection::connectWithKey(uint32 channelID, const char* host, uint32 port, const char* username, const char* privKeyFileName, bool shell, int timeout)
+int ne7ssh_connection::connectWithKey(uint32 channelID, const char* host, short port, const char* username, const char* privKeyFileName, bool shell, int timeout)
 {
     sock = transport->establish(host, port, timeout);
     if (sock == -1)
@@ -426,7 +426,6 @@ Ne7sshSftp* ne7ssh_connection::startSftp()
     else
     {
         ne7ssh::errors()->push(session->getSshChannel(), "Failure to launch remote sftp subsystem.");
-        return 0;
     }
 
     return 0;

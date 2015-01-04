@@ -26,7 +26,7 @@
 
 #if defined(WIN32) || defined(__MINGW32__)
 #   define kill(pid, signo) raise(signo)
-#   define ne7ssh_thread_join(hndl, ign) WaitForSingleObject(hndl, INFINITE)
+#   define ne7ssh_thread_join(hndl, ign) WaitForSingleObject(hndl, INFINITE); ign
 #   define ne7ssh_thread_exit(sig) ExitThread(sig)
 #else
 #   define ne7ssh_thread_create pthread_create
@@ -251,7 +251,14 @@ void* ne7ssh::selectThread(void* initData)
             if (allConns->conns[i]->isOpen() && cmdOrShell)
             {
                 rfds = rfds > allConns->conns[i]->getSocket() ? rfds : allConns->conns[i]->getSocket();
+#if defined(WIN32)
+#pragma warning(push)
+#pragma warning(disable : 4127)
+#endif
                 FD_SET(allConns->conns[i]->getSocket(), &rd);
+#if defined(WIN32)
+#pragma warning(pop)
+#endif
                 if (!fdIsSet)
                 {
                     fdIsSet = true;
@@ -321,10 +328,10 @@ void* ne7ssh::selectThread(void* initData)
     return 0;
 }
 
-int ne7ssh::connectWithPassword(const char* host, const int port, const char* username, const char* password, bool shell, const int timeout)
+int ne7ssh::connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell, const int timeout)
 {
     int channel;
-    uint32 currentRecord, z;
+    uint32 currentRecord = 0, z;
     uint32 channelID;
 
     ne7ssh_connection* con = new ne7ssh_connection();
@@ -390,10 +397,10 @@ int ne7ssh::connectWithPassword(const char* host, const int port, const char* us
     return channel;
 }
 
-int ne7ssh::connectWithKey(const char* host, const int port, const char* username, const char* privKeyFileName, bool shell, const int timeout)
+int ne7ssh::connectWithKey(const char* host, const short port, const char* username, const char* privKeyFileName, bool shell, const int timeout)
 {
     int channel;
-    uint32 currentRecord, z;
+    uint32 currentRecord = 0, z;
     uint32 channelID;
 
     ne7ssh_connection* con = new ne7ssh_connection();
@@ -688,6 +695,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
     const char* buffer;
     size_t len = 0, carretLen = 0, str_len = 0, prevLen = 0;
     time_t cutoff = 0;
+    bool forever = true;
 
     if (timeSec)
     {
@@ -702,7 +710,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
 
     str_len = strlen(str);
 
-    while (1)
+    while (forever)
     {
         if (!lock())
         {
@@ -982,8 +990,8 @@ SSH_EXPORT Ne7sshError* ne7ssh::errors()
 bool ne7ssh::generateKeyPair(const char* type, const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize)
 {
     ne7ssh_keys keyPair;
-    enum keyAlgos { DSA, RSA };
-    uint8 keyAlgo;
+    enum keyAlgos { UNKNOWN, DSA, RSA };
+    uint8 keyAlgo = UNKNOWN;
 
     if (!memcmp(type, "dsa", 3))
     {
@@ -1018,7 +1026,6 @@ bool ne7ssh::generateKeyPair(const char* type, const char* fqdn, const char* pri
 
         default:
             errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
-            return false;
     }
     return false;
 }
@@ -1078,7 +1085,7 @@ bool Ne7SftpSubsystem::writeFile(uint32 fileID, const uint8* data, uint32 len, u
     {
         return errorNotInited();
     }
-    return sftp->writeFile(fileID, data, len);
+    return sftp->writeFile(fileID, data, len, offset);
 }
 
 bool Ne7SftpSubsystem::closeFile(uint32 fileID)

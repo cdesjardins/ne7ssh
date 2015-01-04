@@ -208,7 +208,7 @@ char* ne7ssh_string::nextPart()
     char* result;
     if (currentPart >= parts || !positions)
     {
-        return 0;
+        return NULL;
     }
 
     result = (char*) positions[currentPart];

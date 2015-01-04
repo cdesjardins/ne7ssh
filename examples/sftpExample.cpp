@@ -8,28 +8,43 @@
 */
 
 #include <ne7ssh.h>
-#include <stdio.h>
+#include <iostream>
+
+void reportError(const std::string &tag, ne7ssh* ssh)
+{
+    const char* errmsg;
+    /* For some reason MSVC gives unreferenced param warning for ssh */
+    ssh;
+    do
+    {
+        errmsg = ssh->errors()->pop();
+        std::cerr << tag << " failed with last error: " << errmsg << std::endl;
+    } while (errmsg);
+}
+
 int main(int argc, char* argv[])
 {
     int channel1;
-    ne7ssh* _ssh = new ne7ssh();
     FILE* testFi;
     Ne7SftpSubsystem _sftp;
     const char* dirList;
+
+    if (argc != 4)
+    {
+        std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <password>" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    ne7ssh* _ssh = new ne7ssh();
 
     // Set SSH connection options.
     _ssh->setOptions("aes256-cbc", "hmac-md5");
 
     // Initiate connection without starting a remote shell.
-    channel1 = _ssh->connectWithPassword("remoteHost", 22, "remoteUsr", "password", 0, 20);
+    channel1 = _ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0, 20);
     if (channel1 < 0)
     {
-        const char* errmsg = _ssh->errors()->pop();
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Connection failed with last error: %s\n\n", errmsg);
+        reportError("Connection", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -37,12 +52,7 @@ int main(int argc, char* argv[])
     // Initiate SFTP subsystem.
     if (!_ssh->initSftp(_sftp, channel1))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Command failed with last error: %s\n\n", errmsg);
+        reportError("Command", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -54,19 +64,14 @@ int main(int argc, char* argv[])
     Ne7SftpSubsystem::fileAttrs attrs;
     if (_sftp.getFileAttrs(attrs, "test.bin", true))
     {
-        printf("Permissions: %o\n", (attrs.permissions & 0777));
+        std::cout << "Permissions: " << std::oct << (attrs.permissions & 0777) << std::endl;
     }
 
     // Create a local file.
     testFi = fopen("test.bin", "wb+");
     if (!testFi)
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not open local file: %s\n\n", errmsg);
+        reportError("Open", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -74,12 +79,7 @@ int main(int argc, char* argv[])
     // Download a file.
     if (!_sftp.get("test.bin", testFi))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not get File: %s\n\n", errmsg);
+        reportError("Get", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -87,12 +87,7 @@ int main(int argc, char* argv[])
     // Change directory.
     if (!_sftp.cd("testing"))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not change Directory: %s\n\n", errmsg);
+        reportError("cd", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -100,12 +95,7 @@ int main(int argc, char* argv[])
     // Upload the file.
     if (!_sftp.put(testFi, "test2.bin"))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not put File: %s\n\n", errmsg);
+        reportError("put", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -113,12 +103,7 @@ int main(int argc, char* argv[])
     // Create a new directory.
     if (!_sftp.mkdir("testing3"))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not create Directory: %s\n\n", errmsg);
+        reportError("mkdir", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -127,29 +112,19 @@ int main(int argc, char* argv[])
     dirList = _sftp.ls(".", true);
     if (!dirList)
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not list Directory: %s\n\n", errmsg);
+        reportError("ls", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }
     else
     {
-        printf("Directory Listing:\n\n %s\n", dirList);
+        std::cout << "Directory Listing:" << std::endl << dirList << std::endl;
     }
 
     // Change permisions on newly uploaded file.
     if (!_sftp.chmod("test2.bin", "755"))
     {
-        const char* errmsg = _ssh->errors()->pop(channel1);
-        if (errmsg == NULL)
-        {
-            errmsg = "<null>";
-        }
-        printf("Could not chmod: %s\n\n", errmsg);
+        reportError("chmod", _ssh);
         delete _ssh;
         return EXIT_FAILURE;
     }

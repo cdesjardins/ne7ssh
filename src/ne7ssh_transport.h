@@ -85,7 +85,7 @@ public:
      * @param timeout Timeout for the establish procedure, in seconds.
      * @return Socket number or -1 on failure.
      */
-    SOCKET establish(const char* host, uint32 port, int timeout = 0);
+    SOCKET establish(const char* host, short port, int timeout = 0);
 
     /**
      * Reads data from the socket.

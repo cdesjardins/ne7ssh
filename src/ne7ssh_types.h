@@ -93,6 +93,9 @@ typedef uint8_t Byte;
 
 #if defined(WIN32) || defined(__MINGW32__)
 #  define usleep(time) Sleep(time / 1000)
+#  define UNREF_PARAM(x) x
+#else
+#  define UNREF_PARAM(x)
 #endif
 
 #endif

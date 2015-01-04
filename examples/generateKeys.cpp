@@ -8,21 +8,28 @@
 */
 
 #include <ne7ssh.h>
-#include <stdio.h>
+#include <iostream>
+#include <sstream>
 int main(int argc, char* argv[])
 {
-    ne7ssh* _ssh = new ne7ssh();
-
-    // Generating DSA keys
-    if (!_ssh->generateKeyPair("rsa", "git@chrisd.info", "./privKeyFile", "./pubKeyFile", 2048))
+    if (argc != 4)
     {
-        const char* errmsg = _ssh->errors()->pop();
+        std::cerr << "Error: Three arguments required: " << argv[0] << " [rsa|dsa] <emailaddr> <keysize>" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-        if (errmsg == NULL)
+    ne7ssh* _ssh = new ne7ssh();
+    uint16 size;
+    std::istringstream (argv[3]) >> size;
+    // Generating DSA keys
+    if (!_ssh->generateKeyPair(argv[1], argv[2], "./privKeyFile", "./pubKeyFile", size))
+    {
+        const char* errmsg;
+        do
         {
-            errmsg = "<null>";
-        }
-        printf("Key gneration failed with last error: %s.\n\n", errmsg);
+            errmsg = _ssh->errors()->pop();
+            std::cerr << "Key gneration failed with last error: " << errmsg << std::endl;
+        } while (errmsg);
     }
 
     delete _ssh;

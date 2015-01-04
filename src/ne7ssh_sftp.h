@@ -198,7 +198,7 @@ private:
     * @param timeSec Timeout in seconds.
     * @return True if the command specified has been received. Otherwise false.
     */
-    bool receiveUntil(short _cmd, uint32 timeSec = 0);
+    bool receiveUntil(uint8 _cmd, uint32 timeSec = 0);
 
     /**
     * Receive packets while SFTP subsystem commands received matches specified command.
@@ -206,7 +206,7 @@ private:
     * @param timeSec Timeout in seconds.
     * @return True if all expected data received. Otherwise false.
     */
-    bool receiveWhile(short _cmd, uint32 timeSec = 0);
+    bool receiveWhile(uint8 _cmd, uint32 timeSec = 0);
 
     /**
     * Method to process ATTRS packet.
