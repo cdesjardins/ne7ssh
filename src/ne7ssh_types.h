@@ -92,7 +92,7 @@ typedef uint8_t Byte;
 #endif
 
 #if defined(WIN32) || defined(__MINGW32__)
-#  define usleep(time) Sleep(time)
+#  define usleep(time) Sleep(time / 1000)
 #endif
 
 #endif
