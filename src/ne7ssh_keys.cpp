@@ -358,6 +358,7 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
     ne7ssh_string privKeyStr;
     char* buffer;
     uint32 pos, i, length;
+#ifndef WIN32
     struct stat privKeyStatus;
 
 	if (lstat(privKeyFileName, &privKeyStatus) < 0)
@@ -371,7 +372,7 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
         ne7ssh::errors()->push(-1, "Private key file permissions are read/write by others: '%s'.", privKeyFileName);
         return false;
     }
-
+#endif
     if (!privKeyStr.addFile(privKeyFileName))
     {
         ne7ssh::errors()->push(-1, "Cannot read PEM file: '%s'.", privKeyFileName);
