@@ -18,13 +18,18 @@ int main(int argc, char* argv[])
 {
     int channel1;
     const char* result;
-    ne7ssh* _ssh = new ne7ssh();
 
+    if (argc != 4)
+    {
+        printf("Error: Three arguments required: %s <hostname> <username> <privatekeyfilename>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    ne7ssh* _ssh = new ne7ssh();
     // Set SSH connection options.
     _ssh->setOptions("aes128-cbc", "hmac-sha1");
 
     // Initiate connection.
-    channel1 = _ssh->connectWithKey("192.168.1.19", 22, "debian", "C:\\Users\\chrisd\\software_devel\\ne7ssh\\ns7ssh\\id_rsa");
+    channel1 = _ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
         do
