@@ -3,24 +3,28 @@ Basic Installation Instructions
 
    These are generic installation instructions.
 
-   NetSieben SSH Library requires Botan crypto library 1.4.9 or higher.
-   It can be found here:
+    NetSiben SSH Library requires Botan crypto library 1.10.
 
-   http://botan.randombit.net   
-   
+    The Botan library can be found here: http://botan.randombit.net
+    To compile botan 1.10 for use with ne7ssh on *nix:
+
+    ./configure.py --disable-asm --disable-shared
+    make -j install
+
+    To compile botan 1.10 for use with ne7ssh on Windows:
+
+    configure.py --cc=msvc --cpu=i386 --disable-shared
+    nmake install
+
    NetSieben SSH Library requires Cmake. Cmake software can be found here:
    http://www.cmake.org
    
 The simplest way to compile this package is:
 
-  1. `cd' to the directory containing the package's source code and type
-     `cmake .' to configure the package for your system.
+   Change to the directory containing the package's source code and type:
+        mkdir build
+        cd build
+        cmake -DBOTAN_DIR="<path to botan install dir>" ..
+        cmake --build . --target install
 
-  2. Type `make all' to compile the package.
-
-  3. Type `make install' to install the programs and any data files and
-     documentation.
-
-  4. You can remove the program binaries and object files from the
-     source code directory by typing `make clean'.  
 
