@@ -20,6 +20,7 @@
 #include <botan/look_pk.h>
 #include <cstdio>
 #include <ctype.h>
+#include <sys/stat.h>
 
 using namespace std;
 using namespace Botan;
@@ -357,10 +358,23 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
     ne7ssh_string privKeyStr;
     char* buffer;
     uint32 pos, i, length;
+    struct stat privKeyStatus;
+
+	if (lstat(privKeyFileName, &privKeyStatus) < 0)
+    {
+        ne7ssh::errors()->push(-1, "Cannot read file status: '%s'.", privKeyFileName);
+        return false;
+    }
+
+	if ((privKeyStatus.st_mode & (S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) != 0)
+    {
+        ne7ssh::errors()->push(-1, "Private key file permissions are read/write by others: '%s'.", privKeyFileName);
+        return false;
+    }
 
     if (!privKeyStr.addFile(privKeyFileName))
     {
-        ne7ssh::errors()->push(-1, "Cannot read PEM file: '%s'. Permission issues?", privKeyFileName);
+        ne7ssh::errors()->push(-1, "Cannot read PEM file: '%s'.", privKeyFileName);
         return false;
     }
 

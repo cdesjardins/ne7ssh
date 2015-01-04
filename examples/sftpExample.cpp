@@ -17,7 +17,10 @@ void reportError(const std::string &tag, ne7ssh* ssh)
     do
     {
         errmsg = ssh->errors()->pop();
-        std::cerr << tag << " failed with last error: " << errmsg << std::endl;
+        if (errmsg)
+        {
+            std::cerr << tag << " failed with last error: " << errmsg << std::endl;
+        }
     } while (errmsg);
 }
 

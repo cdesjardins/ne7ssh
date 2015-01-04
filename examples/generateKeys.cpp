@@ -28,7 +28,10 @@ int main(int argc, char* argv[])
         do
         {
             errmsg = _ssh->errors()->pop();
-            std::cerr << "Key gneration failed with last error: " << errmsg << std::endl;
+            if (errmsg)
+            {
+                std::cerr << "Key gneration failed with last error: " << errmsg << std::endl;
+            }
         } while (errmsg);
     }
 
