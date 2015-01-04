@@ -11,12 +11,11 @@ PasswordAuthentication yes
 
 #include <ne7ssh.h>
 #include <iostream>
+#include <fstream>
 
 void reportError(const std::string &tag, ne7ssh* ssh)
 {
     const char* errmsg;
-    /* For some reason MSVC gives unreferenced param warning for ssh */
-    ssh;
     do
     {
         errmsg = ssh->errors()->pop();
@@ -28,7 +27,6 @@ int main(int argc, char* argv[])
 {
     int channel1;
     int filesize = 0;
-    FILE* testFi;
 
     if (argc != 4)
     {
@@ -63,17 +61,13 @@ int main(int argc, char* argv[])
     filesize = _ssh->getReceivedSize(channel1);
 
     // Open a local file.
-    testFi = fopen("./test.bin", "wb");
+    std::fstream file("./test.bin", std::ios_base::out | std::ios_base::binary);
 
     // Write binary data from the receive buffer to the opened file.
-    if (!fwrite(_ssh->readBinary(channel1), (size_t) filesize, 1, testFi))
-    {
-        std::cerr << "Error Writting to file" << std::endl;
-        return EXIT_FAILURE;
-    }
+    file.write((char*)_ssh->readBinary(channel1), (size_t) filesize);
 
     // Close the files.
-    fclose(testFi);
+    file.close();
 
     // Destroy the instance.
     delete _ssh;

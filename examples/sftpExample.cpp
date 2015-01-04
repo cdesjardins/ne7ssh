@@ -9,12 +9,11 @@
 
 #include <ne7ssh.h>
 #include <iostream>
+#include <stdio.h>
 
 void reportError(const std::string &tag, ne7ssh* ssh)
 {
     const char* errmsg;
-    /* For some reason MSVC gives unreferenced param warning for ssh */
-    ssh;
     do
     {
         errmsg = ssh->errors()->pop();
