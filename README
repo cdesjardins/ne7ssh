@@ -7,6 +7,8 @@ distant future in my terminal emulator (ComBomb). I have attempted to contact
 you both, but I have as of yet not recieved any response. If you decide to
 resurrect ne7ssh, then please contact me so that we can merge and converge.
 
+I will be updating this library as needed.
+
 Thanks - Chris D.
 
 
@@ -105,9 +107,7 @@ PPC, Linux SPARC, Solaris, Windows 2000 and XP.
 
 1.2 Dependencies
 
-NetSiben SSH Library requires Botan crypto library 1.4.9 or higher.
-Recommended version is 1.4.12.  1.5.x development versions are not supported at
-this time.
+NetSiben SSH Library requires Botan crypto library 1.10.
 
 The Botan library can be found here: http://botan.randombit.net
 
