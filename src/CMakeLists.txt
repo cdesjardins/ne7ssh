@@ -42,5 +42,6 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_
 endif()
 
 #install(TARGETS net7ssh  DESTINATION lib)
+install(TARGETS ne7ssh  DESTINATION lib)
 install(FILES ne7ssh.h ne7ssh_types.h ne7ssh_error.h ne7ssh_mutex.h DESTINATION include)
 

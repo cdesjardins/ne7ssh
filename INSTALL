@@ -8,6 +8,15 @@ Basic Installation Instructions
     The Botan library can be found here: http://botan.randombit.net
     To compile botan 1.10 for use with ne7ssh on *nix:
 
+    Botan can be fully built and locally installed for ne7ssh with
+    the included python script:
+    botan.py
+
+    Running that script will download, configure and compile botan.
+
+    If there are problems with the script then an overview of how to
+    build botan 1.10 is as follows:
+
     ./configure.py --disable-asm --disable-shared
     make -j install
 
@@ -19,12 +28,13 @@ Basic Installation Instructions
    NetSieben SSH Library requires Cmake. Cmake software can be found here:
    http://www.cmake.org
    
-The simplest way to compile this package is:
+The simplest way to compile this package that should work on all platforms
+is to change to the directory containing the package's source code and type:
 
-   Change to the directory containing the package's source code and type:
+        python botan.py
         mkdir build
         cd build
-        cmake -DBOTAN_DIR="<path to botan install dir>" ..
+        cmake ..
         cmake --build . --target install
 
 
