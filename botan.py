@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-import sys, urllib2, os, tarfile, subprocess, platform, multiprocessing
+import sys, urllib2, os, tarfile, subprocess, platform, multiprocessing, shutil
 
 botanmajor = "1.10"
 botanminor = "9"
 botanname = "Botan-" + botanmajor + "." + botanminor
 botanfile = botanname + ".tgz"
 botanurl = "http://botan.randombit.net/releases/" + botanfile
-botaninstalldir = "../botan"
+botaninstalldir = ".." + os.sep + "botan"
 
 def extractTar(file):
     index = file.rfind(".") + 1
@@ -47,16 +47,19 @@ def downloadFile(url):
 
 def runCmd(cmd):
     print("Issue command: " +  " ".join(cmd))
-    subprocess.call(cmd)
+    return subprocess.call(cmd)
 
-def configureBotan():
-    configCmd = ["python", "configure.py", "--disable-shared", "--prefix=" + botaninstalldir]
+def configureBotan(argv):
+    configCmd = ["python", "configure.py", "--disable-shared", "--prefix=" + os.getcwd() + os.sep + botaninstalldir]
     if (platform.system() == "Windows"):
         configCmd.append("--cc=msvc")
         configCmd.append("--cpu=i386")
     else:
         configCmd.append("--disable-asm")
+    configCmd.extend(argv)
     runCmd(configCmd)
+    if (any("--help" in s for s in argv)):
+        os._exit(0)
 
 def buildBotan():
     if (os.path.exists(botaninstalldir) == True):
@@ -94,7 +97,7 @@ def main(argv):
         print("Skip extraction of Botan archive because the " + botanname + " directory already exists")
     
     os.chdir(botanname)
-    configureBotan()
+    configureBotan(argv)
     buildBotan()
     os.chdir(botaninstalldir)
     fixupInstall()

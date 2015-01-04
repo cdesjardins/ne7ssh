@@ -1,6 +1,17 @@
 Basic Installation Instructions
 ===============================
 
+The simplest way to compile this package that should work on all platforms
+is to change to the directory containing the package's source code and type:
+
+        python botan.py
+        mkdir build
+        cd build
+        cmake ..
+        cmake --build . --target install --config Release
+
+===============================
+
    These are generic installation instructions.
 
     NetSiben SSH Library requires Botan crypto library 1.10.
@@ -28,13 +39,3 @@ Basic Installation Instructions
    NetSieben SSH Library requires Cmake. Cmake software can be found here:
    http://www.cmake.org
    
-The simplest way to compile this package that should work on all platforms
-is to change to the directory containing the package's source code and type:
-
-        python botan.py
-        mkdir build
-        cd build
-        cmake ..
-        cmake --build . --target install
-
-
