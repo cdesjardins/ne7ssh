@@ -32,7 +32,11 @@ typedef unsigned char uint8_t;
 #       ifdef NE7SSH_EXPORTS
 #        define SSH_EXPORT __declspec(dllexport)
 #      else
+#       ifndef NE7SSH_STATIC
 #        define SSH_EXPORT __declspec(dllimport)
+#       else
+#        define SSH_EXPORT
+#       endif
 #      endif
 #   else
 #       define SSH_EXPORT
@@ -88,7 +92,7 @@ typedef uint8_t Byte;
 #endif
 
 #if defined(WIN32) || defined(__MINGW32__)
-#  define usleep(time) Sleep(time)
+#  define usleep(time) Sleep(time / 1000)
 #endif
 
 #endif

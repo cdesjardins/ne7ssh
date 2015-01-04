@@ -28,12 +28,19 @@ set(net7ssh_LIB_SRCS
     ne7ssh_mutex.cpp
     ne7ssh_mutex.h)
 
+include_directories ( src ${HAVE_BOTAN} )
+add_definitions(-DNE7SSH_EXPORTS)
 add_library(ne7ssh STATIC ${net7ssh_LIB_SRCS})
 
-add_library(net7ssh SHARED ${net7ssh_LIB_SRCS})
-target_link_libraries(net7ssh ${HAVE_BOTAN_LIB})
-set_target_properties(net7ssh PROPERTIES VERSION 0.3.1 SOVERSION 0)
+#add_library(net7ssh SHARED ${net7ssh_LIB_SRCS})
+#target_link_libraries(net7ssh ${HAVE_BOTAN_LIB})
+if(MSVC)
+#    target_link_libraries(net7ssh ws2_32)
+    target_link_libraries(ne7ssh ws2_32)
+elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX OR CMAKE_COMPILER_IS_CLANGCC)
+    target_link_libraries(ne7ssh rt)
+endif()
 
-install(TARGETS net7ssh LIBRARY DESTINATION lib)
+#install(TARGETS net7ssh  DESTINATION lib)
 install(FILES ne7ssh.h ne7ssh_types.h ne7ssh_error.h ne7ssh_mutex.h DESTINATION include)
 

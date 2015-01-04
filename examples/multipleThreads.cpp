@@ -121,7 +121,7 @@ void* thread1_proc(void* initData)
             {
                 errmsg = "<null>";
             }
-            printf("Failed while waiting for remote shell wiht last error: %s\n\n", errmsg);
+            printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
             _ssh->close(channel1);
             continue;
         }
@@ -192,7 +192,7 @@ void* thread2_proc(void* initData)
             {
                 errmsg = "<null>";
             }
-            printf("Failed while waiting for remote shell wiht last error: %s\n\n", errmsg);
+            printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
             _ssh->close(channel1);
             continue;
         }
@@ -266,7 +266,7 @@ void* thread3_proc(void* initData)
             {
                 errmsg = "<null>";
             }
-            printf("Failed while waiting for remote shell wiht last error: %s\n\n", errmsg);
+            printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
             _ssh->close(channel1);
             continue;
         }
@@ -337,7 +337,7 @@ void* thread4_proc(void* initData)
             {
                 errmsg = "<null>";
             }
-            printf("Failed while waiting for remote shell wiht last error: %s\n\n", errmsg);
+            printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
             _ssh->close(channel1);
             continue;
         }

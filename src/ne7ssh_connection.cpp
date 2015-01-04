@@ -371,7 +371,7 @@ bool ne7ssh_connection::checkRemoteVersion()
         {
             _pos--;
         }
-        tmpVar.set(remoteVer.begin(), _pos - remoteVer.begin() + 1);
+        tmpVar = SecureVector<Botan::byte>(remoteVer.begin(), _pos - remoteVer.begin() + 1);
         session->setRemoteVersion(tmpVar);
         return true;
     }
@@ -381,7 +381,7 @@ bool ne7ssh_connection::sendLocalVersion()
 {
     SecureVector<Botan::byte> localVer((const Botan::byte*)ne7ssh::SSH_VERSION, (uint32_t) strlen(ne7ssh::SSH_VERSION));
     session->setLocalVersion(localVer);
-    localVer.append((const Botan::byte*)"\r\n", 2);
+    localVer += SecureVector<Botan::byte>((const Botan::byte*)"\r\n", 2);
 
     if (!transport->send(localVer))
     {

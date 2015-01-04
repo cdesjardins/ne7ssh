@@ -436,23 +436,23 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
 
     if (delayedBuffer.length())
     {
-        dataBuff.set(delayedBuffer.value());
+        dataBuff = delayedBuffer.value();
         delayedBuffer.clear();
     }
-    dataBuff.append(data);
+    dataBuff += data;
 
     if (!windowSend)
     {
-        delayedBuff.set(dataBuff);
+        delayedBuff = dataBuff;
     }
     else if (windowSend < dataBuff.size())
     {
-        outBuff.append(dataBuff.begin(), windowSend);
-        delayedBuff.set(dataBuff.begin() + windowSend, dataBuff.size() - windowSend);
+        outBuff += SecureVector<Botan::byte>(dataBuff.begin(), windowSend);
+        delayedBuff = SecureVector<Botan::byte>(dataBuff.begin() + windowSend, dataBuff.size() - windowSend);
     }
     else
     {
-        outBuff.append(dataBuff);
+        outBuff += dataBuff;
     }
 
     if (delayedBuff.size())
@@ -475,7 +475,7 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
         {
             dataStart -= 64;
         }
-        dataBuff.set(outBuff.begin() + dataStart, maxBytes - 64);
+        dataBuff = SecureVector<Botan::byte>(outBuff.begin() + dataStart, maxBytes - 64);
         outBuffer.addVector(dataBuff);
         len -= maxBytes - 64;
     }
@@ -486,7 +486,7 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
         {
             dataStart -= 64;
         }
-        dataBuff.set(outBuff.begin() + dataStart, len);
+        dataBuff = SecureVector<Botan::byte>(outBuff.begin() + dataStart, len);
         outBuffer.addVector(dataBuff);
         inBuffer.clear();
     }

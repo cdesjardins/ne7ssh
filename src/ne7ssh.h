@@ -34,6 +34,10 @@
 # include <botan/rng.h>
 #endif
 
+#include "ne7ssh_types.h"
+#include "ne7ssh_error.h"
+#include "ne7ssh_mutex.h"
+
 #include <stdlib.h>
 #include <string>
 #include <fcntl.h>
@@ -47,9 +51,6 @@ typedef pthread_t ne7ssh_thread_t;
 typedef HANDLE ne7ssh_thread_t;
 #endif
 
-#include "ne7ssh_types.h"
-#include "ne7ssh_error.h"
-#include "ne7ssh_mutex.h"
 
 #define SSH2_MSG_DISCONNECT 1
 #define SSH2_MSG_IGNORE 2

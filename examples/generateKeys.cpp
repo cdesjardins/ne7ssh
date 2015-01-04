@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
     ne7ssh* _ssh = new ne7ssh();
 
     // Generating DSA keys
-    if (!_ssh->generateKeyPair("rsa", "test@test.com", "./privKeyFile", "./pubKeyFile", 2048))
+    if (!_ssh->generateKeyPair("rsa", "git@chrisd.info", "./privKeyFile", "./pubKeyFile", 2048))
     {
         const char* errmsg = _ssh->errors()->pop();
 

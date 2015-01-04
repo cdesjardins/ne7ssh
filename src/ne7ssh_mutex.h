@@ -16,14 +16,14 @@
 
 #ifndef NE7SSH_MUTEX_H
 #define NE7SSH_MUTEX_H
-
+#include "ne7ssh_types.h"
 #if defined(WIN32) || defined(__MINGW32__)
 #   include <windows.h>
 #else
 #   include <pthread.h>
 #endif
 
-class Ne7ssh_Mutex
+class SSH_EXPORT Ne7ssh_Mutex
 {
 public:
     Ne7ssh_Mutex();

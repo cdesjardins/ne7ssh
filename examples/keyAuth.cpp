@@ -18,22 +18,29 @@ int main(int argc, char* argv[])
 {
     int channel1;
     const char* result;
-    ne7ssh* _ssh = new ne7ssh();
 
+    if (argc != 4)
+    {
+        printf("Error: Three arguments required: %s <hostname> <username> <privatekeyfilename>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    ne7ssh* _ssh = new ne7ssh();
     // Set SSH connection options.
     _ssh->setOptions("aes128-cbc", "hmac-sha1");
 
     // Initiate connection.
-    //channel1 = _ssh->connectWithKey("remoteHost", 22, "remoteUsr", "/local/path/to/privKeyFile");
-    channel1 = _ssh->connectWithKey("192.168.1.19", 22, "debian", "/home/chrisd/.ssh/id_rsa");
+    channel1 = _ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        const char* errmsg = _ssh->errors()->pop();
-        if (errmsg == NULL)
+        do
         {
-            errmsg = "<null>";
-        }
-        printf("Connection failed with last error: %s\n\n", errmsg);
+            const char* errmsg = _ssh->errors()->pop();
+            if (errmsg == NULL)
+            {
+                break;
+            }
+            printf("Connection failed with last error: %s\n", errmsg);
+        } while (1);
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -46,7 +53,7 @@ int main(int argc, char* argv[])
         {
             errmsg = "<null>";
         }
-        printf("Failed while waiting for remote shell wiht last error: %s\n\n", errmsg);
+        printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
