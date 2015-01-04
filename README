@@ -1,4 +1,17 @@
-NetSieben SSH Library (ne7ssh) v1.3.2 README
+An open letter to: 
+Andrew Useckas <andrew@netsieben.com>
+Keef Aragon <keef@netsieben.com>
+
+It seems that ne7ssh has been abandoned, I intend to use it in the not too
+distant future in my terminal emulator (ComBomb). I have attempted to contact
+you both, but I have as of yet not recieved any response. If you decide to
+resurrect ne7ssh, then please contact me so that we can merge and converge.
+
+Thanks - Chris D.
+
+
+
+NetSieben SSH Library (ne7ssh) v1.3.x README
 
 LEGALESE
 
