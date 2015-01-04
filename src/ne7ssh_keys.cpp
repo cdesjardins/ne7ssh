@@ -293,7 +293,7 @@ SecureVector<Botan::byte> ne7ssh_keys::generateDSASignature(Botan::SecureVector<
         return sig.value();
     }
 
-    PK_Signer* DSASigner = get_pk_signer(*dsaPrivateKey, "EMSA1(SHA-1)");
+    PK_Signer* DSASigner = new PK_Signer(*dsaPrivateKey, "EMSA1(SHA-1)");
 #if BOTAN_PRE_18 || BOTAN_PRE_15
     sigRaw = DSASigner->sign_message(sigData.value());
 #else
@@ -333,7 +333,7 @@ SecureVector<Botan::byte> ne7ssh_keys::generateRSASignature(Botan::SecureVector<
         return sig.value();
     }
 
-    PK_Signer* RSASigner = get_pk_signer(*rsaPrivateKey, "EMSA3(SHA-1)");
+    PK_Signer* RSASigner = new PK_Signer(*rsaPrivateKey, "EMSA3(SHA-1)");
 #if BOTAN_PRE_18 || BOTAN_PRE_15
     sigRaw = RSASigner->sign_message(sigData.value());
 #else

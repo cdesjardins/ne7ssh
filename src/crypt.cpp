@@ -402,11 +402,11 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
         case DH_GROUP14_SHA1:
             if (dsaKey)
             {
-                verifier = get_pk_verifier(*dsaKey, "EMSA1(SHA-1)");
+                verifier = new PK_Verifier(*dsaKey, "EMSA1(SHA-1)");
             }
             else if (rsaKey)
             {
-                verifier = get_pk_verifier(*rsaKey, "EMSA3(SHA-1)");
+                verifier = new PK_Verifier(*rsaKey, "EMSA3(SHA-1)");
             }
             break;
 
@@ -509,10 +509,10 @@ RSA_PublicKey* ne7ssh_crypt::getRSAKey(Botan::SecureVector<Botan::byte> &hostKey
 bool ne7ssh_crypt::makeKexSecret(Botan::SecureVector<Botan::byte> &result, Botan::BigInt &f)
 {
     DH_KA_Operation dhop(*privKexKey);
-    byte *buf = new byte[f.bytes()];
+    byte* buf = new byte[f.bytes()];
     Botan::BigInt::encode(buf, f);
     SymmetricKey negotiated = dhop.agree(buf, f.bytes());
-    delete []buf;
+    delete[]buf;
     if (!negotiated.length())
     {
         return false;
@@ -669,6 +669,28 @@ uint32 ne7ssh_crypt::getMacDigestLen(uint32 method)
         default:
             return 0;
     }
+}
+
+size_t ne7ssh_crypt::max_keylength_of(const std::string& name)
+{
+    Algorithm_Factory& af = global_state().algorithm_factory();
+
+    if (const BlockCipher * bc = af.prototype_block_cipher(name))
+    {
+        return bc->key_spec().maximum_keylength();
+    }
+
+    if (const StreamCipher * sc = af.prototype_stream_cipher(name))
+    {
+        return sc->key_spec().maximum_keylength();
+    }
+
+    if (const MessageAuthenticationCode * mac = af.prototype_mac(name))
+    {
+        return mac->key_spec().maximum_keylength();
+    }
+
+    throw Algorithm_Not_Found(name);
 }
 
 bool ne7ssh_crypt::makeNewKeys()

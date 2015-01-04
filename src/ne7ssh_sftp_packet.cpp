@@ -112,7 +112,7 @@ uint64 Ne7sshSftpPacket::getInt64()
     result |= (uint64)converter[6] << 8;
     result |= (uint64)converter[7];
 
-    buffer= SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint64), tmpVar.size() - sizeof(uint64));
+    buffer = SecureVector<Botan::byte>(tmpVar.begin() + sizeof(uint64), tmpVar.size() - sizeof(uint64));
     return result;
 }
 

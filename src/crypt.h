@@ -155,6 +155,8 @@ private:
      */
     bool compute_key(Botan::SecureVector<Botan::byte>& key, Botan::byte ID, uint32 nBytes);
 
+    size_t max_keylength_of(const std::string& name);
+
 public:
     /**
      * ne7ssh_crypt class constructor.
