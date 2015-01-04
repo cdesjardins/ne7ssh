@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     _ssh->setOptions("aes128-cbc", "hmac-sha1");
 
     // Initiate connection.
-    channel1 = _ssh->connectWithKey("192.168.1.19", 22, "debian", "/home/chrisd/.ssh/id_rsa");
+    channel1 = _ssh->connectWithKey("192.168.1.19", 22, "debian", "C:\\Users\\chrisd\\software_devel\\ne7ssh\\ns7ssh\\id_rsa");
     if (channel1 < 0)
     {
         do
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
         {
             errmsg = "<null>";
         }
-        printf("Failed while waiting for remote shell wiht last error: %s\n\n", errmsg);
+        printf("Failed while waiting for remote shell with last error: %s\n\n", errmsg);
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;

@@ -36,6 +36,7 @@ add_library(net7ssh SHARED ${net7ssh_LIB_SRCS})
 target_link_libraries(net7ssh ${HAVE_BOTAN_LIB})
 if(MSVC)
     target_link_libraries(net7ssh ws2_32)
+    target_link_libraries(ne7ssh ws2_32)
 endif()
 set_target_properties(net7ssh PROPERTIES VERSION 0.3.1 SOVERSION 0)
 
