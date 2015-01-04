@@ -7,6 +7,7 @@ botanminor = "9"
 botanname = "Botan-" + botanmajor + "." + botanminor
 botanfile = botanname + ".tgz"
 botanurl = "http://botan.randombit.net/releases/" + botanfile
+botaninstalldir = "../botan"
 
 def extractTar(file):
     index = file.rfind(".") + 1
@@ -49,7 +50,7 @@ def runCmd(cmd):
     subprocess.call(cmd)
 
 def configureBotan():
-    configCmd = ["./configure.py", "--disable-shared", "--prefix=install"]
+    configCmd = ["./configure.py", "--disable-shared", "--prefix=" + botaninstalldir]
     if (platform.system() == "Windows"):
         configCmd.append("--cc=msvc")
         configCmd.append("--cpu=i386")
@@ -58,12 +59,15 @@ def configureBotan():
     runCmd(configCmd)
 
 def buildBotan():
+    if (os.path.exists(botaninstalldir) == True):
+        shutil.rmtree(botaninstalldir)
+
     buildCmd = []
     if (platform.system() == "Windows"):
         buildCmd.extend(["nmake"])
     else:
         buildCmd.extend(["make", "-j" + str(multiprocessing.cpu_count() + 1)])
-    buildCmd.append("install")
+    buildCmd.extend(["clean", "install"])
     runCmd(buildCmd)
 
 def fixupFile(src, dest):
@@ -75,9 +79,8 @@ def fixupInstall():
     if (platform.system() == "Windows"):
         pass
     else:
-        fixupFile("libbotan-" + botanmajor + ".a", "install/lib/libbotan.a")
-        fixupFile("botan-" + botanmajor + "/botan", "install/include/botan")
-        fixupFile(botanname, "../botan")
+        fixupFile("libbotan-" + botanmajor + ".a", "lib/libbotan.a")
+        fixupFile("botan-" + botanmajor + "/botan", "include/botan")
 
 def main(argv):
     if (os.path.exists(botanfile) == False):
@@ -93,6 +96,7 @@ def main(argv):
     os.chdir(botanname)
     configureBotan()
     buildBotan()
+    os.chdir(botaninstalldir)
     fixupInstall()
 
 if __name__ == "__main__":
