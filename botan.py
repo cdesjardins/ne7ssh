@@ -50,7 +50,7 @@ def runCmd(cmd):
     subprocess.call(cmd)
 
 def configureBotan():
-    configCmd = ["./configure.py", "--disable-shared", "--prefix=" + botaninstalldir]
+    configCmd = ["python", "configure.py", "--disable-shared", "--prefix=" + botaninstalldir]
     if (platform.system() == "Windows"):
         configCmd.append("--cc=msvc")
         configCmd.append("--cpu=i386")
