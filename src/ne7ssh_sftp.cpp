@@ -25,7 +25,7 @@
 
 using namespace Botan;
 
-Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne7ssh_channel(_session), session(_session), timeout(30), seq(1), sftpCmd(0), lastError(0), currentPath(0), sftpFiles(0), sftpFilesCount(0)
+Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne7ssh_channel(_session), session(_session), timeout(30), seq(1), sftpCmd(0), lastError(0), currentPath(0), sftpFiles(0)
 {
     windowRecv = _channel->getRecvWindow();
     windowSend = _channel->getSendWindow();
@@ -33,15 +33,6 @@ Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne
 
 Ne7sshSftp::~Ne7sshSftp()
 {
-    uint16 i;
-    for (i = 0; i < sftpFilesCount; i++)
-    {
-        free(sftpFiles[i]);
-    }
-    if (sftpFiles)
-    {
-        free(sftpFiles);
-    }
     if (currentPath)
     {
         free(currentPath);
@@ -334,30 +325,15 @@ bool Ne7sshSftp::addOpenHandle(Botan::SecureVector<Botan::byte>& packet)
     ne7ssh_string sftpBuffer(packet, 0);
     uint32 requestID;
     SecureVector<Botan::byte> handle;
-    size_t len;
 
     requestID = sftpBuffer.getInt();
     sftpBuffer.getString(handle);
 
-    if (!this->sftpFiles)
-    {
-        this->sftpFiles = (sftpFile**) malloc(sizeof(sftpFile*));
-    }
-    else
-    {
-        this->sftpFiles = (sftpFile**) realloc(sftpFiles, sizeof(sftpFile*) * (this->sftpFilesCount + 1));
-    }
+    sftpFile file;
+    file.fileID = requestID;
+    file._handle.assign((char*)handle.begin(), handle.size());
+    sftpFiles.push_back(file);
 
-    sftpFiles[sftpFilesCount] = (sftpFile*) malloc(sizeof(sftpFile));
-    sftpFiles[sftpFilesCount]->fileID = requestID;
-    len = handle.size();
-    if (len > 256)
-    {
-        len = 256;
-    }
-    memcpy(sftpFiles[sftpFilesCount]->handle, handle.begin(), len);
-    sftpFiles[sftpFilesCount]->handleLen = (uint16)len;
-    sftpFilesCount++;
     return true;
 }
 
@@ -583,8 +559,8 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
 
     packet.addChar(SSH2_FXP_READ);
     packet.addInt(this->seq++);
-    packet.addInt(remoteFile->handleLen);
-    packet.addBytes((Botan::byte*)remoteFile->handle, remoteFile->handleLen);
+    packet.addInt(remoteFile->_handle.length());
+    packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
     packet.addInt64(offset);
     packet.addInt(SFTP_MAX_MSG_SIZE);
 
@@ -599,7 +575,7 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
         return false;
     }
 
-    windowSend -= remoteFile->handleLen + 25;
+    windowSend -= remoteFile->_handle.length() + 25;
 
     status = receiveWhile(SSH2_FXP_DATA, this->timeout);
 
@@ -628,8 +604,8 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
 
     packet.addChar(SSH2_FXP_WRITE);
     packet.addInt(this->seq++);
-    packet.addInt(remoteFile->handleLen);
-    packet.addBytes((Botan::byte*)remoteFile->handle, remoteFile->handleLen);
+    packet.addInt(remoteFile->_handle.length());
+    packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
     packet.addInt64(offset);
     packet.addInt(len);
 
@@ -638,12 +614,12 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
         ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
         return false;
     }
-    windowSend -= remoteFile->handleLen + 25;
+    windowSend -= remoteFile->_handle.length() + 25;
 
     while (sent < len)
     {
         currentLen = len - sent < windowSend ? len - sent : windowSend;
-        currentLen = currentLen < (uint32)(SFTP_MAX_PACKET_SIZE - (remoteFile->handleLen + 86)) ? currentLen : SFTP_MAX_PACKET_SIZE - (remoteFile->handleLen + 86);
+        currentLen = currentLen < (uint32)(SFTP_MAX_PACKET_SIZE - (remoteFile->_handle.length() + 86)) ? currentLen : SFTP_MAX_PACKET_SIZE - (remoteFile->_handle.length() + 86);
 
         if (sent)
         {
@@ -657,7 +633,7 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
         }
         else
         {
-            sendVector = packet.valueFragment(remoteFile->handleLen + 21 + len);
+            sendVector = packet.valueFragment(remoteFile->_handle.length() + 21 + len);
         }
 
         if (!sendVector.size())
@@ -692,7 +668,7 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
     Ne7sshSftpPacket packet(session->getSendChannel());
     ne7ssh_transport* _transport = session->transport;
     uint16 i;
-    bool status, match = false;
+    bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
 
     if (!remoteFile)
@@ -702,8 +678,8 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
 
     packet.addChar(SSH2_FXP_CLOSE);
     packet.addInt(this->seq++);
-    packet.addInt(remoteFile->handleLen);
-    packet.addBytes((Botan::byte*)remoteFile->handle, remoteFile->handleLen);
+    packet.addInt(remoteFile->_handle.length());
+    packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
 
     if (!packet.isChannelSet())
     {
@@ -716,24 +692,15 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
         return false;
     }
 
-    windowSend -= remoteFile->handleLen + 13;
+    windowSend -= remoteFile->_handle.length() + 13;
 
-    for (i = 0; i < sftpFilesCount; i++)
+    for (i = 0; i < sftpFiles.size(); i++)
     {
-        if (match)
+        if (sftpFiles[i].fileID == fileID)
         {
-            sftpFiles[i - 1] = sftpFiles[i];
+            sftpFiles.erase(sftpFiles.begin() + i);
+            break;
         }
-        else if (sftpFiles[i]->fileID == fileID)
-        {
-            free(sftpFiles[i]);
-            sftpFiles[i] = 0;
-            match = true;
-        }
-    }
-    if (match)
-    {
-        sftpFilesCount--;
     }
 
     status = receiveUntil(SSH2_FXP_STATUS, this->timeout);
@@ -819,11 +786,11 @@ Ne7sshSftp::sftpFile* Ne7sshSftp::getFileHandle(uint32 fileID)
 {
     uint16 i;
 
-    for (i = 0; i < sftpFilesCount; i++)
+    for (i = 0; i < sftpFiles.size(); i++)
     {
-        if (sftpFiles[i]->fileID == fileID)
+        if (sftpFiles[i].fileID == fileID)
         {
-            return sftpFiles[i];
+            return &sftpFiles[i];
         }
     }
     ne7ssh::errors()->push(session->getSshChannel(), "Invalid file ID: %i.", fileID);
@@ -883,8 +850,8 @@ bool Ne7sshSftp::getFStat(uint32 fileID)
     }
     packet.addChar(SSH2_FXP_FSTAT);
     packet.addInt(this->seq++);
-    packet.addInt(remoteFile->handleLen);
-    packet.addBytes((Botan::byte*)remoteFile->handle, remoteFile->handleLen);
+    packet.addInt(remoteFile->_handle.length());
+    packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
 
     if (!packet.isChannelSet())
     {
@@ -897,7 +864,7 @@ bool Ne7sshSftp::getFStat(uint32 fileID)
         return false;
     }
 
-    windowSend -= remoteFile->handleLen + 13;
+    windowSend -= remoteFile->_handle.length() + 13;
 
     status = receiveWhile(SSH2_FXP_ATTRS, this->timeout);
     return status;
@@ -1309,8 +1276,8 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
         packet.clear();
         packet.addChar(SSH2_FXP_READDIR);
         packet.addInt(this->seq++);
-        packet.addInt(remoteFile->handleLen);
-        packet.addBytes((Botan::byte*)remoteFile->handle, remoteFile->handleLen);
+        packet.addInt(remoteFile->_handle.length());
+        packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
 
         if (!packet.isChannelSet())
         {
@@ -1323,7 +1290,7 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
             return 0;
         }
 
-        windowSend -= remoteFile->handleLen + 13;
+        windowSend -= remoteFile->_handle.length() + 13;
 
         status = receiveWhile(SSH2_FXP_NAME, this->timeout);
     }

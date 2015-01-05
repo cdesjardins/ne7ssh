@@ -137,11 +137,9 @@ private:
     typedef struct
     {
         uint32 fileID;
-        uint16 handleLen;
-        char   handle[256];
+        std::string _handle;
     } sftpFile;
-    sftpFile** sftpFiles;
-    uint16 sftpFilesCount;
+    std::vector<sftpFile> sftpFiles;
 
     /**
     * Replacement for ne7ssh_channel handleData method. Processes SFTP specific packets.
