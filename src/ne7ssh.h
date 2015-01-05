@@ -36,20 +36,11 @@
 
 #include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
-#include "ne7ssh_mutex.h"
 
 #include <stdlib.h>
 #include <string>
 #include <fcntl.h>
-#if !defined(WIN32) && !defined(__MINGW32__)
-#   include <pthread.h>
-#   include <sys/select.h>
-#   include <unistd.h>
-typedef pthread_t ne7ssh_thread_t;
-#else
-#include <windows.h>
-typedef HANDLE ne7ssh_thread_t;
-#endif
+#include <thread>
 
 #define SSH2_MSG_DISCONNECT 1
 #define SSH2_MSG_IGNORE 2
@@ -107,7 +98,7 @@ class SSH_EXPORT ne7ssh
 {
 private:
 
-    static Ne7ssh_Mutex mut;
+    static std::mutex _mutex;
     Botan::LibraryInitializer* init;
     ne7ssh_connection** connections;
     uint32 conCount;
@@ -127,20 +118,9 @@ private:
      * @return Active channel.
      */
     uint32 getChannelNo();
-    ne7ssh_thread_t select_thread;
+    std::thread _selectThread;
     bool connected;
 
-    /**
-    * Lock the mutex.
-    * @return True if lock aquired. Oterwise false.
-    */
-    static bool lock();
-
-    /**
-    * Unlock the mutext.
-    * @return True if the mutext successfully unlocked. Otherwise false.
-    */
-    static bool unlock();
     static Ne7sshError* errs;
 
 public:
@@ -306,16 +286,6 @@ public:
      * @return the Error collection
      */
     static Ne7sshError* errors();
-
-    static bool isSelectActive()
-    {
-        return selectActive;
-    }
-
-    static void selectDead()
-    {
-        selectActive = false;
-    }
 };
 
 class Ne7sshSftp;

@@ -20,7 +20,7 @@
 #include "ne7ssh.h"
 
 using namespace Botan;
-Ne7ssh_Mutex Ne7sshError::mut;
+std::mutex Ne7sshError::_mutex;
 
 Ne7sshError::Ne7sshError() : memberCount(0), ErrorBuffer(0)
 {
@@ -178,10 +178,7 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
 
     va_end(args);
 
-    if (!lock())
-    {
-        return false;
-    }
+    std::unique_lock<std::mutex> lock(_mutex);
     if (!memberCount)
     {
         ErrorBuffer = (Error**) malloc(sizeof(Error*));
@@ -196,10 +193,6 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
     ErrorBuffer[memberCount]->channel = channel;
     ErrorBuffer[memberCount]->errorStr = errStr;
     memberCount++;
-    if (!unlock())
-    {
-        return false;
-    }
     return true;
 }
 
@@ -219,10 +212,7 @@ const char* Ne7sshError::pop(int32 channel)
     {
         return NULL;
     }
-    if (!lock())
-    {
-        return NULL;
-    }
+    std::unique_lock<std::mutex> lock(_mutex);
 
     for (i = 0; i < memberCount; i++)
     {
@@ -234,7 +224,6 @@ const char* Ne7sshError::pop(int32 channel)
     }
     if (recID < 0)
     {
-        unlock();
         return NULL;
     }
 
@@ -245,11 +234,6 @@ const char* Ne7sshError::pop(int32 channel)
         deleteRecord((uint16)recID);
     }
     else
-    {
-        unlock();
-        return NULL;
-    }
-    if (!unlock())
     {
         return NULL;
     }
@@ -287,11 +271,7 @@ bool Ne7sshError::deleteCoreMsgs()
 bool Ne7sshError::deleteChannel(int32 channel)
 {
     uint16 i, offset = 0;
-
-    if (!lock())
-    {
-        return false;
-    }
+    std::unique_lock<std::mutex> lock(_mutex);
     for (i = 0; i < memberCount; i++)
     {
         if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
@@ -309,36 +289,6 @@ bool Ne7sshError::deleteChannel(int32 channel)
         }
     }
     memberCount -= offset;
-    if (!unlock())
-    {
-        return false;
-    }
-    return true;
-}
-
-bool Ne7sshError::lock()
-{
-    int status;
-    status = Ne7sshError::mut.lock();
-    if (status)
-    {
-        /// FIXME possible infinite loop
-        ne7ssh::errors()->push(-1, "Could not aquire a mutex lock. Error: %i.", status);
-        usleep(1000);
-        return false;
-    }
-    return true;
-}
-
-bool Ne7sshError::unlock()
-{
-    int status;
-    status = Ne7sshError::mut.unlock();
-    if (status)
-    {
-        ne7ssh::errors()->push(-1, "Error while releasing a mutex lock. Error: %i.", status);
-        return false;
-    }
     return true;
 }
 

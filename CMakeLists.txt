@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 project(net7ssh CXX)
 
 find_file(HAVE_BOTAN "botan/botan.h" PATHS "${BOTAN_DIR}/include" "${CMAKE_SOURCE_DIR}/botan/include")

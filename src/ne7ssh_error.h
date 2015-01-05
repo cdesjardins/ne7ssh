@@ -16,6 +16,7 @@
 #define NE7SSH_ERROR_H
 
 #include <stdlib.h>
+#include <mutex>
 #if !defined(WIN32) && !defined(__MINGW32__)
 #   include <sys/select.h>
 #endif
@@ -23,7 +24,6 @@
 #define MAX_ERROR_LEN 500
 
 #include "ne7ssh_types.h"
-#include "ne7ssh_mutex.h"
 
 /**
     @author Andrew Useckas <andrew@netsieben.com>
@@ -33,8 +33,7 @@ class SSH_EXPORT Ne7sshError
 private:
     uint16 memberCount;
     char popedErr[MAX_ERROR_LEN + 1];
-    static Ne7ssh_Mutex mut;
-
+    static std::mutex _mutex;
     /**
     * Structure for storing error messages.
     */
@@ -50,18 +49,6 @@ private:
     * @return True on success, false on failure.
     */
     bool deleteRecord(uint16 recID);
-
-    /**
-    * Lock the mutex.
-    * @return True if lock aquired. Oterwise false.
-    */
-    static bool lock();
-
-    /**
-    * Unlock the mutext.
-    * @return True if the mutext successfully unlocked. Otherwise false.
-    */
-    static bool unlock();
 
 public:
     /**
