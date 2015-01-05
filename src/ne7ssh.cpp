@@ -105,7 +105,7 @@ private:
     Botan::RandomNumberGenerator* rng;
 };
 
-ne7ssh::ne7ssh() : connections(0), conCount(0)
+ne7ssh::ne7ssh()
 {
     errs = new Ne7sshError();
     if (ne7ssh::running)
@@ -116,8 +116,6 @@ ne7ssh::ne7ssh() : connections(0), conCount(0)
     }
     init = new LibraryInitializer("thread_safe");
     ne7ssh::running = true;
-    allConns.conns = 0;
-    allConns.count = 0;
 
 #if !BOTAN_PRE_18 && !BOTAN_PRE_15
     ne7ssh::rng = new Locking_AutoSeeded_RNG();
@@ -136,7 +134,7 @@ ne7ssh::~ne7ssh()
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
             close(i);
         }
@@ -147,18 +145,7 @@ ne7ssh::~ne7ssh()
     }
     _selectThread.join();
 
-    if (conCount)
-    {
-        for (i = 0; i < conCount; i++)
-        {
-            delete connections[i];
-        }
-        free(connections);
-    }
-    else if (connections)
-    {
-        free(connections);
-    }
+    _connections.clear();
 
     if (ne7ssh::PREFERED_CIPHER)
     {
@@ -186,15 +173,14 @@ ne7ssh::~ne7ssh()
     delete init;
 }
 
-void* ne7ssh::selectThread(void* initData)
+void ne7ssh::selectThread(void* initData)
 {
     ne7ssh* _ssh = (ne7ssh*) initData;
-    uint32 i, z;
+    uint32 i;
     int status = 0;
     fd_set rd;
     SOCKET rfds;
     struct timeval waitTime;
-    connStruct* allConns;
     bool cmdOrShell = false;
     bool fdIsSet;
 
@@ -205,12 +191,11 @@ void* ne7ssh::selectThread(void* initData)
             fdIsSet = false;
             rfds = 0;
             std::unique_lock<std::recursive_mutex> lock(_mutex);
-            allConns = _ssh->getConnetions();
-            for (i = 0; i < allConns->count; i++)
+            for (i = 0; i < _ssh->_connections.size(); i++)
             {
-                if (allConns->conns[i]->isOpen() && allConns->conns[i]->data2Send() && !allConns->conns[i]->isSftpActive())
+                if (_ssh->_connections[i]->isOpen() && _ssh->_connections[i]->data2Send() && !_ssh->_connections[i]->isSftpActive())
                 {
-                    allConns->conns[i]->sendData();
+                    _ssh->_connections[i]->sendData();
                 }
             }
 
@@ -219,17 +204,17 @@ void* ne7ssh::selectThread(void* initData)
 
             FD_ZERO(&rd);
 
-            for (i = 0; i < allConns->count; i++)
+            for (i = 0; i < _ssh->_connections.size(); i++)
             {
-                cmdOrShell = (allConns->conns[i]->isRemoteShell() || allConns->conns[i]->isCmdRunning()) ? true : false;
-                if (allConns->conns[i]->isOpen() && cmdOrShell)
+                cmdOrShell = (_ssh->_connections[i]->isRemoteShell() || _ssh->_connections[i]->isCmdRunning()) ? true : false;
+                if (_ssh->_connections[i]->isOpen() && cmdOrShell)
                 {
-                    rfds = rfds > allConns->conns[i]->getSocket() ? rfds : allConns->conns[i]->getSocket();
+                    rfds = rfds > _ssh->_connections[i]->getSocket() ? rfds : _ssh->_connections[i]->getSocket();
 #if defined(WIN32)
 #pragma warning(push)
 #pragma warning(disable : 4127)
 #endif
-                    FD_SET(allConns->conns[i]->getSocket(), &rd);
+                    FD_SET(_ssh->_connections[i]->getSocket(), &rd);
 #if defined(WIN32)
 #pragma warning(pop)
 #endif
@@ -238,18 +223,9 @@ void* ne7ssh::selectThread(void* initData)
                         fdIsSet = true;
                     }
                 }
-                else if ((allConns->conns[i]->isConnected() && allConns->conns[i]->isRemoteShell()) || allConns->conns[i]->isCmdClosed())
+                else if ((_ssh->_connections[i]->isConnected() && _ssh->_connections[i]->isRemoteShell()) || _ssh->_connections[i]->isCmdClosed())
                 {
-                    delete (allConns->conns[i]);
-                    allConns->conns[i] = 0;
-                    allConns->count--;
-                    for (z = i; z < allConns->count; z++)
-                    {
-                        allConns->conns[z] = allConns->conns[z + 1];
-                        allConns->conns[z + 1] = 0;
-                    }
-                    _ssh->setCount(allConns->count);
-                    i--;
+                    _ssh->_connections.erase(_ssh->_connections.begin() + i);
                 }
             }
         }
@@ -283,12 +259,11 @@ void* ne7ssh::selectThread(void* initData)
         {
             std::unique_lock<std::recursive_mutex> lock(_mutex);
 
-            allConns = _ssh->getConnetions();
-            for (i = 0; i < allConns->count; i++)
+            for (i = 0; i < _ssh->_connections.size(); i++)
             {
-                if (allConns->conns[i]->isOpen() && FD_ISSET(allConns->conns[i]->getSocket(), &rd))
+                if (_ssh->_connections[i]->isOpen() && FD_ISSET(_ssh->_connections[i]->getSocket(), &rd))
                 {
-                    allConns->conns[i]->handleData();
+                    _ssh->_connections[i]->handleData();
                 }
             }
         }
@@ -297,7 +272,6 @@ void* ne7ssh::selectThread(void* initData)
             errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
         }
     }
-    return 0;
 }
 
 int ne7ssh::connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell, const int timeout)
@@ -306,21 +280,11 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
     uint32 currentRecord = 0, z;
     uint32 channelID;
 
-    ne7ssh_connection* con = new ne7ssh_connection();
+    std::shared_ptr<ne7ssh_connection> con(new ne7ssh_connection());
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        if (!conCount)
-        {
-            connections = (ne7ssh_connection**) malloc(sizeof (ne7ssh_connection*));
-        }
-        else
-        {
-            connections = (ne7ssh_connection**) realloc(connections, sizeof (ne7ssh_connection*) * (conCount + 1));
-        }
-        connections[conCount++] = con;
-        allConns.count = conCount;
-        allConns.conns = connections;
+        _connections.push_back(con);
         channelID = getChannelNo();
         con->setChannelNo(channelID);
     }
@@ -337,29 +301,20 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
         try
         {
             std::unique_lock<std::recursive_mutex> lock(_mutex);
-            for (z = 0; z < allConns.count; z++)
+            for (z = 0; z < _connections.size(); z++)
             {
-                if (allConns.conns[z] == con)
+                if (_connections[z] == con)
                 {
                     currentRecord = z;
                     break;
                 }
             }
-            if (z == allConns.count)
+            if (z == _connections.size())
             {
                 ne7ssh::errors()->push(-1, "Unexpected behaviour!");
                 return -1;
             }
-
-            delete con;
-            allConns.conns[currentRecord] = 0;
-            allConns.count--;
-            for (z = currentRecord; z < allConns.count; z++)
-            {
-                allConns.conns[z] = allConns.conns[z + 1];
-                allConns.conns[z + 1] = 0;
-            }
-            conCount = allConns.count;
+            _connections.erase(_connections.begin() + currentRecord);
         }
         catch (const std::system_error &ex)
         {
@@ -376,21 +331,11 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
     uint32 currentRecord = 0, z;
     uint32 channelID;
 
-    ne7ssh_connection* con = new ne7ssh_connection();
+    std::shared_ptr<ne7ssh_connection> con(new ne7ssh_connection());
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        if (!conCount)
-        {
-            connections = (ne7ssh_connection**) malloc(sizeof (ne7ssh_connection*) * (conCount + 1));
-        }
-        else
-        {
-            connections = (ne7ssh_connection**) realloc(connections, sizeof (ne7ssh_connection*) * (conCount + 1));
-        }
-        connections[conCount++] = con;
-        allConns.count = conCount;
-        allConns.conns = connections;
+        _connections.push_back(con);
         channelID = getChannelNo();
         con->setChannelNo(channelID);
     }
@@ -407,29 +352,20 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
         try
         {
             std::unique_lock<std::recursive_mutex> lock(_mutex);
-            for (z = 0; z < allConns.count; z++)
+            for (z = 0; z < _connections.size(); z++)
             {
-                if (allConns.conns[z] == con)
+                if (_connections[z] == con)
                 {
                     currentRecord = z;
                     break;
                 }
             }
-            if (z == allConns.count)
+            if (z == _connections.size())
             {
                 ne7ssh::errors()->push(-1, "Unexpected behaviour!");
                 return -1;
             }
-
-            delete con;
-            allConns.conns[currentRecord] = 0;
-            allConns.count--;
-            for (z = currentRecord; z < allConns.count; z++)
-            {
-                allConns.conns[z] = allConns.conns[z + 1];
-                allConns.conns[z + 1] = 0;
-            }
-            conCount = allConns.count;
+            _connections.erase(_connections.begin() + currentRecord);
         }
         catch (const std::system_error &ex)
         {
@@ -446,11 +382,11 @@ bool ne7ssh::send(const char* data, int channel)
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                connections[i]->sendData(data);
+                _connections[i]->sendData(data);
                 return true;
             }
         }
@@ -472,11 +408,11 @@ bool ne7ssh::initSftp(Ne7SftpSubsystem& _sftp, int channel)
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                __sftp = connections[i]->startSftp();
+                __sftp = _connections[i]->startSftp();
                 if (!__sftp)
                 {
                     return false;
@@ -513,11 +449,11 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                status = connections[i]->sendCmd(cmd);
+                status = _connections[i]->sendCmd(cmd);
                 if (!status)
                 {
                     return false;
@@ -525,21 +461,21 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
 
                 if (!timeout)
                 {
-                    while (!connections[i]->getCmdComplete())
+                    while (!_connections[i]->getCmdComplete())
                     {
-                        for (i = 0; i < conCount; i++)
+                        for (i = 0; i < _connections.size(); i++)
                         {
-                            if (channel == connections[i]->getChannelNo())
+                            if (channel == _connections[i]->getChannelNo())
                             {
                                 break;
                             }
                         }
-                        if (i == conCount)
+                        if (i == _connections.size())
                         {
                             errs->push(-1, "Bad channel: %i specified for sending.", channel);
                             return false;
                         }
-                        if (!connections[i]->getCmdComplete())
+                        if (!_connections[i]->getCmdComplete())
                         {
                             _mutex.unlock();
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -549,21 +485,21 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
                 }
                 else if (timeout > 0)
                 {
-                    while (!connections[i]->getCmdComplete())
+                    while (!_connections[i]->getCmdComplete())
                     {
-                        for (i = 0; i < conCount; i++)
+                        for (i = 0; i < _connections.size(); i++)
                         {
-                            if (channel == connections[i]->getChannelNo())
+                            if (channel == _connections[i]->getChannelNo())
                             {
                                 break;
                             }
                         }
-                        if (i == conCount)
+                        if (i == _connections.size())
                         {
                             errs->push(-1, "Bad channel: %i specified for sending.", channel);
                             return false;
                         }
-                        if (!connections[i]->getCmdComplete())
+                        if (!_connections[i]->getCmdComplete())
                         {
                             _mutex.unlock();
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -605,11 +541,11 @@ bool ne7ssh::close(int channel)
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                status = connections[i]->sendClose();
+                status = _connections[i]->sendClose();
             }
         }
         errs->deleteChannel(channel);
@@ -708,14 +644,14 @@ const char* ne7ssh::read(int channel)
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                data = connections[i]->getReceived();
+                data = _connections[i]->getReceived();
                 if (data.size())
                 {
-                    return ((const char*)connections[i]->getReceived().begin());
+                    return ((const char*)_connections[i]->getReceived().begin());
                 }
             }
         }
@@ -742,14 +678,14 @@ void* ne7ssh::readBinary(int channel)
     try
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex, std::defer_lock);
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                data = connections[i]->getReceived();
+                data = _connections[i]->getReceived();
                 if (data.size())
                 {
-                    return ((void*)connections[i]->getReceived().begin());
+                    return ((void*)_connections[i]->getReceived().begin());
                 }
             }
         }
@@ -771,17 +707,17 @@ int ne7ssh::getReceivedSize(int channel)
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
 
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (channel == connections[i]->getChannelNo())
+            if (channel == _connections[i]->getChannelNo())
             {
-                if (!connections[i]->getReceived().size())
+                if (!_connections[i]->getReceived().size())
                 {
                     return 0;
                 }
                 else
                 {
-                    size = connections[i]->getReceived().size();
+                    size = _connections[i]->getReceived().size();
                     return (size);
                 }
             }
@@ -801,21 +737,21 @@ uint32 ne7ssh::getChannelNo()
     uint32 i;
     int32 channelID = 1;
 
-    if (!conCount)
+    if (_connections.size() == 0)
     {
         return channelID;
     }
 
     for (channelID = 1; channelID != 0x7FFFFFFF; channelID++)
     {
-        for (i = 0; i < conCount; i++)
+        for (i = 0; i < _connections.size(); i++)
         {
-            if (connections[i] && (connections[i]->getChannelNo() == channelID))
+            if (_connections[i] && (_connections[i]->getChannelNo() == channelID))
             {
                 break;
             }
         }
-        if (i == conCount)
+        if (i == _connections.size())
         {
             break;
         }

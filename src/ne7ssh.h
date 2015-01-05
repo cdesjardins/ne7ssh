@@ -41,6 +41,7 @@
 #include <string>
 #include <fcntl.h>
 #include <thread>
+#include <memory>
 
 #define SSH2_MSG_DISCONNECT 1
 #define SSH2_MSG_IGNORE 2
@@ -74,14 +75,6 @@
 
 class ne7ssh_connection;
 
-/** Structure used to store connections. Used to better sync with selectThread. */
-typedef struct
-{
-    /** Pointer to all active connections.*/
-    ne7ssh_connection** conns;
-    /** Active connection count.	*/
-    uint32 count;
-} connStruct;
 
 /** definitions for Botan */
 namespace Botan
@@ -100,18 +93,16 @@ private:
 
     static std::recursive_mutex _mutex;
     Botan::LibraryInitializer* init;
-    ne7ssh_connection** connections;
-    uint32 conCount;
+    std::vector<std::shared_ptr<ne7ssh_connection> > _connections;
     volatile static bool running;
     static bool selectActive;
-    connStruct allConns;
 
     /**
      * Send / Receive thread.
      * <p> For Internal use only
      * @return Usually 0 when thread terminates
      */
-    static void* selectThread(void*);
+    static void selectThread(void*);
 
     /**
      * Returns the number of active channel.
@@ -172,18 +163,6 @@ public:
     int connectWithKey(const char* host, const short port, const char* username, const char* privKeyFileName, bool shell = true, const int timeout = 0);
 
     /**
-     * Retrieves a pointer to all current connections.
-     * <p> For internal use only.
-     * @return Returns pointer to pointers to ne7ssh_connection class, or 0 if no connection exist.
-     */
-//    ne7ssh_connection** getConnections () { return connections; }
-
-    connStruct* getConnetions()
-    {
-        return &allConns;
-    }
-
-    /**
      * Retreives count of current connections
      * <p> For internal use only.
      * @return Returns current count of connections.
@@ -213,16 +192,6 @@ public:
      * @return Returns true if closing was successful, otherwise false is returned.
      */
     bool close(int channel);
-
-    /**
-     * Sets connection count.
-     * <p> For internal use only.
-     * @param count Integer to set connection count.
-     */
-    void setCount(uint32 count)
-    {
-        conCount = count;
-    }
 
     /**
     * Reads all data from receiving buffer on specified channel.
