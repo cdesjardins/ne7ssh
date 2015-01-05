@@ -46,8 +46,8 @@ const char* ne7ssh::HOSTKEY_ALGORITHMS = "ssh-dss,ssh-rsa";
 #endif
 
 const char* ne7ssh::COMPRESSION_ALGORITHMS = "none";
-char* ne7ssh::PREFERED_CIPHER = 0;
-char* ne7ssh::PREFERED_MAC = 0;
+std::string ne7ssh::PREFERED_CIPHER;
+std::string ne7ssh::PREFERED_MAC;
 std::recursive_mutex ne7ssh::_mutex;
 volatile bool ne7ssh::running = false;
 bool ne7ssh::selectActive = true;
@@ -147,16 +147,8 @@ ne7ssh::~ne7ssh()
 
     _connections.clear();
 
-    if (ne7ssh::PREFERED_CIPHER)
-    {
-        free(ne7ssh::PREFERED_CIPHER);
-        ne7ssh::PREFERED_CIPHER = 0;
-    }
-    if (ne7ssh::PREFERED_MAC)
-    {
-        free(ne7ssh::PREFERED_MAC);
-        ne7ssh::PREFERED_MAC = 0;
-    }
+    ne7ssh::PREFERED_CIPHER.clear();
+    ne7ssh::PREFERED_MAC.clear();
     if (errs)
     {
         delete (errs);
@@ -770,36 +762,15 @@ uint32 ne7ssh::getChannelNo()
 
 void ne7ssh::setOptions(const char* prefCipher, const char* prefHmac)
 {
-    size_t len = 0;
-
     if (prefCipher)
     {
-        len = strlen(prefCipher);
+        ne7ssh::PREFERED_CIPHER.assign(prefCipher);
     }
-    if (!ne7ssh::PREFERED_CIPHER && len)
-    {
-        ne7ssh::PREFERED_CIPHER = (char*) malloc(len);
-    }
-    else if (len)
-    {
-        ne7ssh::PREFERED_CIPHER = (char*) realloc(ne7ssh::PREFERED_CIPHER, len);
-    }
-    memcpy(ne7ssh::PREFERED_CIPHER, prefCipher, len);
 
-    len = 0;
     if (prefHmac)
     {
-        len = strlen(prefHmac);
+        ne7ssh::PREFERED_MAC.assign(prefHmac);
     }
-    if (!ne7ssh::PREFERED_MAC && len)
-    {
-        ne7ssh::PREFERED_MAC = (char*) malloc(len);
-    }
-    else if (len)
-    {
-        ne7ssh::PREFERED_MAC = (char*) realloc(ne7ssh::PREFERED_MAC, len);
-    }
-    memcpy(ne7ssh::PREFERED_MAC, prefHmac, len);
 }
 
 SSH_EXPORT Ne7sshError* ne7ssh::errors()

@@ -124,8 +124,8 @@ public:
     static const char* MAC_ALGORITHMS;
     static const char* CIPHER_ALGORITHMS;
     static const char* COMPRESSION_ALGORITHMS;
-    static char* PREFERED_CIPHER;
-    static char* PREFERED_MAC;
+    static std::string PREFERED_CIPHER;
+    static std::string PREFERED_MAC;
 
     /**
      * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.

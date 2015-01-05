@@ -50,7 +50,7 @@ void ne7ssh_kex::constructLocalKex()
     localKex.addString(ne7ssh::KEX_ALGORITHMS);
     localKex.addString(ne7ssh::HOSTKEY_ALGORITHMS);
 
-    if (ne7ssh::PREFERED_CIPHER)
+    if (ne7ssh::PREFERED_CIPHER.size() > 0)
     {
         myCiphers.split(',');
         myCiphers.resetParts();
@@ -61,7 +61,7 @@ void ne7ssh_kex::constructLocalKex()
             if (cipher != NULL)
             {
                 len = strlen(cipher);
-                if (!memcmp(cipher, ne7ssh::PREFERED_CIPHER, len))
+                if (ne7ssh::PREFERED_CIPHER.compare(cipher) == 0)
                 {
                     Ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
                 }
@@ -83,7 +83,7 @@ void ne7ssh_kex::constructLocalKex()
     }
 //  Ciphers.append (&null_byte, 1);
 
-    if (ne7ssh::PREFERED_MAC)
+    if (ne7ssh::PREFERED_MAC.size() > 0)
     {
         myMacs.split(',');
         myMacs.resetParts();
@@ -94,7 +94,7 @@ void ne7ssh_kex::constructLocalKex()
             if (hmac != NULL)
             {
                 len = strlen(hmac);
-                if (!memcmp(hmac, ne7ssh::PREFERED_MAC, len))
+                if (ne7ssh::PREFERED_MAC.compare(hmac) == 0)
                 {
                     Hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
                 }
