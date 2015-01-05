@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(net7ssh CXX)
-INCLUDE(CheckIncludeFileCXX)
+
 find_file(HAVE_BOTAN "botan/botan.h" PATHS "${BOTAN_DIR}/include" "${CMAKE_SOURCE_DIR}/botan/include")
 if (NOT HAVE_BOTAN)
     MESSAGE(FATAL_ERROR "Could not find Botan includes ${BOTAN_DIR}")
