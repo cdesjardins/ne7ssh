@@ -24,15 +24,15 @@ int main(int argc, char* argv[])
     // Generating DSA keys
     if (!_ssh->generateKeyPair(argv[1], argv[2], "./privKeyFile", "./pubKeyFile", size))
     {
-        const char* errmsg;
+        std::string errmsg;
         do
         {
             errmsg = _ssh->errors()->pop();
-            if (errmsg)
+            if (errmsg.size() > 0)
             {
                 std::cerr << "Key gneration failed with last error: " << errmsg << std::endl;
             }
-        } while (errmsg);
+        } while (errmsg.size() > 0);
     }
 
     delete _ssh;

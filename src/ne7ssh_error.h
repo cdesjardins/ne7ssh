@@ -17,6 +17,8 @@
 
 #include <stdlib.h>
 #include <mutex>
+#include <queue>
+#include <map>
 #if !defined(WIN32) && !defined(__MINGW32__)
 #   include <sys/select.h>
 #endif
@@ -31,24 +33,11 @@
 class SSH_EXPORT Ne7sshError
 {
 private:
-    uint16 memberCount;
-    char popedErr[MAX_ERROR_LEN + 1];
     static std::recursive_mutex _mutex;
     /**
     * Structure for storing error messages.
     */
-    struct Error
-    {
-        int32 channel;
-        char* errorStr;
-    }** ErrorBuffer;
-
-    /**
-    * Delete a single error message.
-    * @param recID Position within the array.
-    * @return True on success, false on failure.
-    */
-    bool deleteRecord(uint16 recID);
+    std::map<int32, std::queue<std::string> > _errorBuffers;
 
 public:
     /**
@@ -73,27 +62,25 @@ public:
     * Pops an error message from the Core context.
     * @return The last error message in the Core context. The message is removed from the stack.
     */
-    const char* pop();
+    const std::string pop();
 
     /**
     * Pops an error message from the Channel context.
     * @param channel Specifies the channel error message was bound to. This is ne7ssh library channel, not the receive or send channels used by the transport layer.
     * @return The last error message in the Channel context. The message is removed from the stack. Returns null if no there are no erros in the Channel context.
     */
-    const char* pop(int32 channel);
+    const std::string pop(int32 channel);
 
     /**
     * Removes all error messages within Core context from the stack.
-    * @return True on success, false on failure.
     */
-    bool deleteCoreMsgs();
+    void deleteCoreMsgs();
 
     /**
     * Removes all error messages within Channel context from the stack.
     * @param channel Specifies the channel error message was bound to. This is ne7ssh library channel, not the receive or send channels used by the transport layer.
-    * @return True on succes, false on failure.
     */
-    bool deleteChannel(int32 channel);
+    void deleteChannel(int32 channel);
 };
 
 #endif

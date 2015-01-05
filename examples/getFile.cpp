@@ -15,15 +15,15 @@ PasswordAuthentication yes
 
 void reportError(const std::string &tag, ne7ssh* ssh)
 {
-    const char* errmsg;
+    std::string errmsg;
     do
     {
         errmsg = ssh->errors()->pop();
-        if (errmsg)
+        if (errmsg.size() > 0)
         {
             std::cerr << tag << " failed with last error: " << errmsg << std::endl;
         }
-    } while (errmsg);
+    } while (errmsg.size() > 0);
 }
 
 int main(int argc, char* argv[])

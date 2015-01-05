@@ -22,31 +22,20 @@
 using namespace Botan;
 std::recursive_mutex Ne7sshError::_mutex;
 
-Ne7sshError::Ne7sshError() : memberCount(0), ErrorBuffer(0)
+Ne7sshError::Ne7sshError()
 {
 }
 
 Ne7sshError::~Ne7sshError()
 {
-    uint16 i;
-
-    for (i = 0; i < memberCount; i++)
-    {
-        if (ErrorBuffer[i] && ErrorBuffer[i]->errorStr)
-        {
-            free(ErrorBuffer[i]->errorStr);
-        }
-        free(ErrorBuffer[i]);
-    }
-    free(ErrorBuffer);
 }
 
 bool Ne7sshError::push(int32 channel, const char* format, ...)
 {
     va_list args;
     char* s;
-    char* errStr = 0;
-    uint32 len = 0, msgLen = 0, _pos = 0;
+    std::string errStr;
+    uint32 len = 0, msgLen = 0;
     bool isArg = false;
     bool isUnsigned = false;
     char converter[21];
@@ -59,10 +48,8 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
     }
 
     converter[0] = 0x00;
-    len = strlen(format);
 
     va_start(args, format);
-    errStr = (char*) malloc(len + 1);
 
     do
     {
@@ -85,8 +72,7 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     {
                         msgLen = MAX_ERROR_LEN;
                     }
-                    errStr = (char*) realloc(errStr, len + msgLen + 1);
-                    memcpy((errStr + _pos), s, msgLen);
+                    errStr.append(s, msgLen);
                     if (isUnsigned)
                     {
                         len += msgLen - 3;
@@ -95,7 +81,6 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     {
                         len += msgLen - 2;
                     }
-                    _pos += msgLen;
                     isUnsigned = false;
                     isArg = false;
                     break;
@@ -107,8 +92,7 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     {
                         msgLen = MAX_ERROR_LEN;
                     }
-                    errStr = (char*) realloc(errStr, len + msgLen + 1);
-                    memcpy((errStr + _pos), secVec->begin(), msgLen);
+                    errStr.append((char*)secVec->begin(), msgLen);
                     if (isUnsigned)
                     {
                         len += msgLen - 3;
@@ -117,7 +101,6 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     {
                         len += msgLen - 2;
                     }
-                    _pos += msgLen;
                     isUnsigned = false;
                     isArg = false;
                     break;
@@ -135,8 +118,7 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                         sprintf(converter, "%d", i);
                     }
                     msgLen = strlen(converter);
-                    errStr = (char*) realloc(errStr, len + msgLen + 1);
-                    memcpy((errStr + _pos), converter, msgLen);
+                    errStr.append(converter, msgLen);
                     if (isUnsigned)
                     {
                         len += msgLen - 3;
@@ -145,7 +127,6 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     {
                         len += msgLen - 2;
                     }
-                    _pos += msgLen;
                     isUnsigned = false;
                     isArg = false;
                     break;
@@ -154,8 +135,7 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     i = va_arg(args, int32);
                     sprintf(converter, "%x", i);
                     msgLen = strlen(converter);
-                    errStr = (char*) realloc(errStr, len + msgLen + 1);
-                    memcpy((errStr + _pos), converter, msgLen);
+                    errStr.append(converter, msgLen);
                     if (isUnsigned)
                     {
                         len += msgLen - 3;
@@ -164,7 +144,6 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
                     {
                         len += msgLen - 2;
                     }
-                    _pos += msgLen;
                     isUnsigned = false;
                     isArg = false;
                     break;
@@ -172,123 +151,53 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
         }
         else
         {
-            errStr[_pos++] = *format;
+            errStr.push_back(*format);
         }
     } while (*format++);
 
     va_end(args);
 
     std::unique_lock<std::recursive_mutex> lock(_mutex);
-    if (!memberCount)
-    {
-        ErrorBuffer = (Error**) malloc(sizeof(Error*));
-        ErrorBuffer[0] = (Error*) malloc(sizeof(Error));
-    }
-    else
-    {
-        ErrorBuffer = (Error**) realloc(ErrorBuffer, sizeof(Error*) * (memberCount + 1));
-        ErrorBuffer[memberCount] = (Error*) malloc(sizeof(Error));
-    }
 
-    ErrorBuffer[memberCount]->channel = channel;
-    ErrorBuffer[memberCount]->errorStr = errStr;
-    memberCount++;
+    _errorBuffers[channel].push(errStr);
     return true;
 }
 
-const char* Ne7sshError::pop()
+const std::string Ne7sshError::pop()
 {
     return pop(-1);
 }
 
-const char* Ne7sshError::pop(int32 channel)
+const std::string Ne7sshError::pop(int32 channel)
 {
-    uint16 i;
-    int32 recID = -1;
-    const char* result = 0;
-    uint32 len;
-
-    if (!memberCount)
-    {
-        return NULL;
-    }
+    std::string result;
     std::unique_lock<std::recursive_mutex> lock(_mutex);
-
-    for (i = 0; i < memberCount; i++)
+    std::map<int32, std::queue<std::string> >::iterator bufs = _errorBuffers.find(channel);
+    if (bufs != _errorBuffers.end())
     {
-        if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
+        std::queue<std::string> errQ = bufs->second;
+        if (errQ.empty() == false)
         {
-            recID = i;
-            result = ErrorBuffer[i]->errorStr;
+            result = errQ.front();
+            bufs->second.pop();
         }
     }
-    if (recID < 0)
-    {
-        return NULL;
-    }
 
-    if (result)
-    {
-        len = strlen(result) < MAX_ERROR_LEN ? strlen(result) : MAX_ERROR_LEN;
-        memcpy(popedErr, result, len + 1);
-        deleteRecord((uint16)recID);
-    }
-    else
-    {
-        return NULL;
-    }
-
-    return popedErr;
+    return result;
 }
 
-bool Ne7sshError::deleteRecord(uint16 recID)
+void Ne7sshError::deleteCoreMsgs()
 {
-    uint16 i;
-
-    if (ErrorBuffer[recID] && ErrorBuffer[recID]->errorStr)
-    {
-        free(ErrorBuffer[recID]->errorStr);
-    }
-    else
-    {
-        return false;
-    }
-    free(ErrorBuffer[recID]);
-    ErrorBuffer[recID] = 0;
-    for (i = recID + 1; i < memberCount; i++)
-    {
-        ErrorBuffer[i - 1] = ErrorBuffer[i];
-    }
-    memberCount--;
-    return true;
+    deleteChannel(-1);
 }
 
-bool Ne7sshError::deleteCoreMsgs()
+void Ne7sshError::deleteChannel(int32 channel)
 {
-    return deleteChannel(-1);
-}
-
-bool Ne7sshError::deleteChannel(int32 channel)
-{
-    uint16 i, offset = 0;
     std::unique_lock<std::recursive_mutex> lock(_mutex);
-    for (i = 0; i < memberCount; i++)
+    std::map<int32, std::queue<std::string> >::iterator bufs = _errorBuffers.find(channel);
+    if (bufs != _errorBuffers.end())
     {
-        if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)
-        {
-            if (ErrorBuffer[i]->errorStr)
-            {
-                free(ErrorBuffer[i]->errorStr);
-            }
-            free(ErrorBuffer[i]);
-            offset++;
-        }
-        else if (offset)
-        {
-            ErrorBuffer[i - offset] = ErrorBuffer[i];
-        }
+        _errorBuffers.erase(bufs);
     }
-    memberCount -= offset;
-    return true;
 }
 
