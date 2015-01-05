@@ -25,6 +25,12 @@
 using namespace std;
 using namespace Botan;
 
+const std::string ne7ssh_keys::headerDSA = "-----BEGIN DSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::footerDSA = "-----END DSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::headerRSA = "-----BEGIN RSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::footerRSA = "-----END RSA PRIVATE KEY-----\n";
+
+
 ne7ssh_keys::ne7ssh_keys() : dsaPrivateKey(0), rsaPrivateKey(0), keyAlgo(0)
 {
 }
@@ -356,8 +362,7 @@ SecureVector<Botan::byte> ne7ssh_keys::generateRSASignature(Botan::SecureVector<
 bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
 {
     ne7ssh_string privKeyStr;
-    char* buffer;
-    uint32 pos, i, length;
+    std::string buffer;
 #ifndef WIN32
     struct stat privKeyStatus;
 
@@ -379,62 +384,25 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
         return false;
     }
 
-    buffer = (char*) malloc(privKeyStr.length() + 1);
-    memcpy(buffer, (const char*)privKeyStr.value().begin(), privKeyStr.length());
-    buffer[privKeyStr.length()] = 0x0;
+    buffer.assign((const char*)privKeyStr.value().begin(), privKeyStr.length());
+    // Find all CR-LF, and remove the CR
+    buffer.erase(std::remove(buffer.begin(), buffer.end(), '\r'), buffer.end());
 
-    length = privKeyStr.length();
-
-    for (i = pos = 0; i < privKeyStr.length(); i++)
-    {
-        if (isspace(buffer[i]))
-        {
-            while (i < privKeyStr.length() && isspace(buffer[i]))
-            {
-                if (buffer[pos] != '\n')
-                {
-                    buffer[pos] = buffer[i];
-                }
-                if (++i >= privKeyStr.length())
-                {
-                    break;
-                }
-            }
-            i--;
-            pos++;
-            continue;
-        }
-        buffer[pos] = buffer[i];
-        pos++;
-    }
-    buffer[pos] = 0x00;
-    length = pos;
-
-    if ((memcmp(buffer, "-----BEGIN", 10)) ||
-        (memcmp(buffer + length - 17, "PRIVATE KEY-----", 16)))
-    {
-        ne7ssh::errors()->push(-1, "Encountered unknown PEM file format. Perhaps not an SSH private key file: '%s'.", privKeyFileName);
-        free(buffer);
-        return false;
-    }
-
-    if (!memcmp(buffer, "-----BEGIN RSA PRIVATE KEY-----", 31))
+    if ((buffer.find(headerRSA) == 0) && (buffer.find(footerRSA) == (buffer.length() - footerRSA.length())))
     {
         this->keyAlgo = ne7ssh_keys::RSA;
     }
-    else if (!memcmp(buffer, "-----BEGIN DSA PRIVATE KEY-----", 31))
+    else if ((buffer.find(headerDSA) == 0) && (buffer.find(footerDSA) == (buffer.length() - footerDSA.length())))
     {
         this->keyAlgo = ne7ssh_keys::DSA;
     }
     else
     {
         ne7ssh::errors()->push(-1, "Encountered unknown PEM file format. Perhaps not an SSH private key file: '%s'.", privKeyFileName);
-        free(buffer);
         return false;
     }
 
-    SecureVector<Botan::byte> keyVector((Botan::byte*)buffer, length);
-    free(buffer);
+    SecureVector<Botan::byte> keyVector((Botan::byte*)buffer.c_str(), buffer.length());
     switch (this->keyAlgo)
     {
         case DSA:
@@ -458,16 +426,14 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
 bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
 {
 //  DataSource_Memory privKeyPEMSrc (privKeyPEMStr);
-    const char* headerDSA = "-----BEGIN DSA PRIVATE KEY-----\n";
-    const char* footerDSA = "-----END DSA PRIVATE KEY-----\n";
     SecureVector<Botan::byte> keyDataRaw;
     BigInt p, q, g, y, x;
     char* start;
     size_t version;
 
-    start = buffer + strlen(headerDSA);
+    start = buffer + headerDSA.length();
     Pipe base64dec(new Base64_Decoder);
-    base64dec.process_msg((Botan::byte*)start, size - strlen(footerDSA) - strlen(headerDSA));
+    base64dec.process_msg((Botan::byte*)start, size - footerDSA.length() - headerDSA.length());
     keyDataRaw = base64dec.read_all();
 
     BER_Decoder decoder(keyDataRaw);
@@ -528,16 +494,14 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
 
 bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
 {
-    const char* headerRSA = "-----BEGIN RSA PRIVATE KEY-----\n";
-    const char* footerRSA = "-----END RSA PRIVATE KEY-----\n";
     SecureVector<Botan::byte> keyDataRaw;
     BigInt p, q, e, d, n;
     char* start;
     size_t version;
 
-    start = buffer + strlen(headerRSA);
+    start = buffer + headerRSA.length();
     Pipe base64dec(new Base64_Decoder);
-    base64dec.process_msg((Botan::byte*)start, size - strlen(footerRSA) - strlen(headerRSA));
+    base64dec.process_msg((Botan::byte*)start, size - footerRSA.length() - headerRSA.length());
     keyDataRaw = base64dec.read_all();
 
     BER_Decoder decoder(keyDataRaw);

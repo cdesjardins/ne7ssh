@@ -39,6 +39,10 @@ private:
     Botan::RSA_PrivateKey* rsaPrivateKey;
     ne7ssh_string publicKeyBlob;
     Botan::SecureVector<Botan::byte> signature;
+    const static std::string headerDSA;
+    const static std::string footerDSA;
+    const static std::string headerRSA;
+    const static std::string footerRSA;
 
     uint8 keyAlgo;
 
