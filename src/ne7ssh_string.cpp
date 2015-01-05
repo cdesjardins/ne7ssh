@@ -25,16 +25,16 @@
 
 using namespace Botan;
 
-ne7ssh_string::ne7ssh_string() : positions(0), parts(0)
+ne7ssh_string::ne7ssh_string() : _currentPart(0)
 {
 }
 
-ne7ssh_string::ne7ssh_string(Botan::SecureVector<Botan::byte>& var, uint32 position) : positions(0), parts(0)
+ne7ssh_string::ne7ssh_string(Botan::SecureVector<Botan::byte>& var, uint32 position) : _currentPart(0)
 {
     buffer = SecureVector<Botan::byte>((var.begin() + position), (var.size() - position));
 }
 
-ne7ssh_string::ne7ssh_string(const char* var, uint32 position) : positions(0), parts(0)
+ne7ssh_string::ne7ssh_string(const char* var, uint32 position) : _currentPart(0)
 {
     char null_char = 0x0;
     buffer = SecureVector<Botan::byte>((Botan::byte*)(var + position), (u32bit) (strlen(var) - position));
@@ -43,10 +43,6 @@ ne7ssh_string::ne7ssh_string(const char* var, uint32 position) : positions(0), p
 
 ne7ssh_string::~ne7ssh_string()
 {
-    if (positions)
-    {
-        free(positions);
-    }
 }
 
 void ne7ssh_string::addString(const char* str)
@@ -63,7 +59,6 @@ bool ne7ssh_string::addFile(const char* filename)
 {
     FILE* FI = fopen(filename, "rb");
     size_t size;
-    Botan::byte* data;
 
     if (!FI)
     {
@@ -75,11 +70,10 @@ bool ne7ssh_string::addFile(const char* filename)
     size = ftell(FI);
     rewind(FI);
 
-    data = (Botan::byte*) malloc(size);
-    fread(data, size, 1, FI);
+    std::unique_ptr<Botan::byte> data(new Botan::byte[size]);
+    fread(data.get(), size, 1, FI);
     fclose(FI);
-    buffer += SecureVector<Botan::byte>(data, (u32bit) size);
-    free(data);
+    buffer += SecureVector<Botan::byte>(data.get(), (u32bit) size);
     return true;
 }
 
@@ -182,23 +176,19 @@ void ne7ssh_string::split(const char token)
     uint32 len = buffer.size();
     uint32 i;
 
-    if (positions)
+    if (_positions.size() != 0)
     {
         return;
     }
-    positions = (Botan::byte**) malloc(sizeof(Botan::byte*) * (parts + 1));
-    positions[parts] = _buffer;
-    parts++;
+    _positions.push_back(_buffer);
 
     for (i = 0; i < len; i++)
     {
         if (_buffer[i] == token)
         {
             _buffer[i] = '\0';
-            positions = (Botan::byte**) realloc(positions, sizeof(Botan::byte*) * (parts + 1));
 
-            positions[parts] = _buffer + i + 1;
-            parts++;
+            _positions.push_back(_buffer + i + 1);
         }
     }
 }
@@ -206,13 +196,13 @@ void ne7ssh_string::split(const char token)
 char* ne7ssh_string::nextPart()
 {
     char* result;
-    if (currentPart >= parts || !positions)
+    if (_currentPart >= _positions.size() || _positions.size() == 0)
     {
         return NULL;
     }
 
-    result = (char*) positions[currentPart];
-    currentPart++;
+    result = (char*) _positions[_currentPart];
+    _currentPart++;
 
     return result;
 }

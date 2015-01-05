@@ -315,7 +315,6 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     uint32 crypt_block;
     char padLen;
     uint32 packetLen;
-    Botan::byte* padBytes;
     uint32 length;
     SecureVector<Botan::byte> crypted, hmac;
 
@@ -336,10 +335,10 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     out.addChar(padLen);
     out.addVector(buffer);
 
-    padBytes = (Botan::byte*) malloc(padLen);
-    memset(padBytes, 0x00, padLen);
-    out.addBytes(padBytes, padLen);
-    free(padBytes);
+    std::unique_ptr<Botan::byte> padBytes(new Botan::byte[padLen]);
+    memset(padBytes.get(), 0x00, padLen);
+    out.addBytes(padBytes.get(), padLen);
+    padBytes.reset();
 
     if (_crypto->isInited())
     {

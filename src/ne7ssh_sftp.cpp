@@ -1024,7 +1024,6 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
     size_t offset = 0;
     Botan::SecureVector<Botan::byte> localBuffer;
     uint32 fileID;
-    uint8* buffer = 0;
     size_t len;
 
     if (!localFile || !remoteFile)
@@ -1050,35 +1049,23 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
         return false;
     }
 
-    buffer = (uint8*) malloc(SFTP_MAX_MSG_SIZE);
+    std::unique_ptr<uint8> buffer(new uint8[SFTP_MAX_MSG_SIZE]);
     while (size > offset)
     {
         len = (size - offset) < SFTP_MAX_MSG_SIZE - 384 ? (size - offset) : SFTP_MAX_MSG_SIZE - 384;
 
-        if (!fread(buffer, len, 1, localFile))
+        if (!fread(buffer.get(), len, 1, localFile))
         {
             ne7ssh::errors()->push(session->getSshChannel(), "Could not read from local file. Remote file ID %i.", fileID);
-            if (buffer)
-            {
-                free(buffer);
-            }
             return false;
         }
-        if (!writeFile(fileID, buffer, len, offset))
+        if (!writeFile(fileID, buffer.get(), len, offset))
         {
-            if (buffer)
-            {
-                free(buffer);
-            }
             return false;
         }
         offset += len;
     }
 
-    if (buffer)
-    {
-        free(buffer);
-    }
     if (!closeFile(fileID))
     {
         return false;

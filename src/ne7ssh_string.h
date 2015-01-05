@@ -26,9 +26,8 @@
 class ne7ssh_string
 {
 private:
-    Botan::byte** positions;
-    uint32 parts;
-    uint32 currentPart;
+    std::vector<Botan::byte*> _positions;
+    uint32 _currentPart;
 
 protected:
     Botan::SecureVector<Botan::byte> buffer;
@@ -180,7 +179,7 @@ public:
      */
     void resetParts()
     {
-        currentPart = 0;
+        _currentPart = 0;
     }
 
     /**
