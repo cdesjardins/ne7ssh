@@ -113,7 +113,7 @@ private:
     Botan::SecureVector<Botan::byte> fileBuffer;
     enum writeMode { READ, OVERWRITE, APPEND };
     uint8 lastError;
-    char* currentPath;
+    std::string _currentPath;
 
     /**
     * Structure used to store rmote file attributes.

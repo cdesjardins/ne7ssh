@@ -25,7 +25,7 @@
 
 using namespace Botan;
 
-Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne7ssh_channel(_session), session(_session), timeout(30), seq(1), sftpCmd(0), lastError(0), currentPath(0), sftpFiles(0)
+Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne7ssh_channel(_session), session(_session), timeout(30), seq(1), sftpCmd(0), lastError(0)
 {
     windowRecv = _channel->getRecvWindow();
     windowSend = _channel->getSendWindow();
@@ -33,10 +33,6 @@ Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne
 
 Ne7sshSftp::~Ne7sshSftp()
 {
-    if (currentPath)
-    {
-        free(currentPath);
-    }
 }
 
 bool Ne7sshSftp::init()
@@ -710,7 +706,7 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
 ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
 {
     Botan::SecureVector<Botan::byte> result;
-    char* buffer = 0;
+    std::string buffer;
     uint32 len, pos, last_char, i = 0;
 
     if (!filename)
@@ -719,8 +715,7 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
     }
     len = strlen(filename);
 
-    buffer = (char*) malloc(len + 1);
-    memcpy(buffer, filename, len);
+    buffer.assign(filename, len);
 
     while (isspace(buffer[i]))
     {
@@ -754,20 +749,19 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
     }
 
     result.clear();
-    if ((buffer[0] != '/') && currentPath)
+    if ((buffer[0] != '/') && (_currentPath.length() > 0))
     {
-        if (currentPath)
+        if (_currentPath.length() > 0)
         {
-            len = strlen(this->currentPath);
+            len = this->_currentPath.length();
         }
         else
         {
-            free(buffer);
             return ne7ssh_string();
         }
-        result += SecureVector<Botan::byte>((uint8*)currentPath, len);
+        result += SecureVector<Botan::byte>((uint8*)_currentPath.c_str(), len);
         last_char = len - 1;
-        if (currentPath[last_char] && currentPath[last_char] != '/')
+        if (_currentPath[last_char] && _currentPath[last_char] != '/')
         {
             result += SecureVector<Botan::byte>((uint8*)"/", 1);
         }
@@ -777,8 +771,7 @@ ne7ssh_string Ne7sshSftp::getFullPath(const char* filename)
         pos--;
     }
     buffer[++pos] = 0x00;
-    result += SecureVector<Botan::byte>((uint8*)buffer, pos);
-    free(buffer);
+    result += SecureVector<Botan::byte>((uint8*)buffer.c_str(), pos);
     return ne7ssh_string(result, 0);
 }
 
@@ -1381,16 +1374,7 @@ bool Ne7sshSftp::cd(const char* remoteDir)
     }
     packet.getString(fileName);
 
-    if (!currentPath)
-    {
-        currentPath = (char*) malloc(fileName.size() + 1);
-    }
-    else
-    {
-        currentPath = (char*) realloc(currentPath, fileName.size() + 1);
-    }
-    memcpy(currentPath, fileName.begin(), fileName.size());
-    currentPath[fileName.size()] = 0;
+    _currentPath.assign((char*)fileName.begin(), fileName.size());
     return status;
 }
 
