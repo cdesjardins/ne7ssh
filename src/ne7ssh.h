@@ -98,11 +98,11 @@ class SSH_EXPORT ne7ssh
 {
 private:
 
-    static std::mutex _mutex;
+    static std::recursive_mutex _mutex;
     Botan::LibraryInitializer* init;
     ne7ssh_connection** connections;
     uint32 conCount;
-    static bool running;
+    volatile static bool running;
     static bool selectActive;
     connStruct allConns;
 
@@ -229,7 +229,7 @@ public:
     * @param channel Channel to read data on.
     * @return Returns string read from receiver buffer or 0 if buffer is empty.
     */
-    const char* read(int channel, bool do_lock = true);
+    const char* read(int channel);
 
     /**
     * Reads all data from receiving buffer on specified channel. Returns pointer to void. Together with getReceivedSize and sendCmd can be used to read remote files.
@@ -243,7 +243,7 @@ public:
      * @param channel Channel number which buffer size to check.
      * @return Return size of the buffer, or 0x0 if receive buffer empty.
      */
-    int getReceivedSize(int channel, bool do_lock = true);
+    int getReceivedSize(int channel);
 
     /**
      * Wait until receiving buffer contains a string passed in str, or until the function timeouts as specified in timeout.

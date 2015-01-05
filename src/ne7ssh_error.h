@@ -33,7 +33,7 @@ class SSH_EXPORT Ne7sshError
 private:
     uint16 memberCount;
     char popedErr[MAX_ERROR_LEN + 1];
-    static std::mutex _mutex;
+    static std::recursive_mutex _mutex;
     /**
     * Structure for storing error messages.
     */

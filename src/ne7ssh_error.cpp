@@ -20,7 +20,7 @@
 #include "ne7ssh.h"
 
 using namespace Botan;
-std::mutex Ne7sshError::_mutex;
+std::recursive_mutex Ne7sshError::_mutex;
 
 Ne7sshError::Ne7sshError() : memberCount(0), ErrorBuffer(0)
 {
@@ -178,7 +178,7 @@ bool Ne7sshError::push(int32 channel, const char* format, ...)
 
     va_end(args);
 
-    std::unique_lock<std::mutex> lock(_mutex);
+    std::unique_lock<std::recursive_mutex> lock(_mutex);
     if (!memberCount)
     {
         ErrorBuffer = (Error**) malloc(sizeof(Error*));
@@ -212,7 +212,7 @@ const char* Ne7sshError::pop(int32 channel)
     {
         return NULL;
     }
-    std::unique_lock<std::mutex> lock(_mutex);
+    std::unique_lock<std::recursive_mutex> lock(_mutex);
 
     for (i = 0; i < memberCount; i++)
     {
@@ -271,7 +271,7 @@ bool Ne7sshError::deleteCoreMsgs()
 bool Ne7sshError::deleteChannel(int32 channel)
 {
     uint16 i, offset = 0;
-    std::unique_lock<std::mutex> lock(_mutex);
+    std::unique_lock<std::recursive_mutex> lock(_mutex);
     for (i = 0; i < memberCount; i++)
     {
         if (ErrorBuffer[i] && ErrorBuffer[i]->channel == channel)

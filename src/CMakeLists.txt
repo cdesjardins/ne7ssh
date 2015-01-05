@@ -31,7 +31,7 @@ add_definitions(-DNE7SSH_EXPORTS)
 add_library(ne7ssh STATIC ${net7ssh_LIB_SRCS})
 
 set_property(TARGET ne7ssh PROPERTY CXX_STANDARD 11)
-set_property(TARGET ne7ssh PROPERTY CXX_STANDARD_REQUIRED ON)
+#set_property(TARGET ne7ssh PROPERTY CXX_STANDARD_REQUIRED ON)
 #add_library(net7ssh SHARED ${net7ssh_LIB_SRCS})
 #target_link_libraries(net7ssh ${HAVE_BOTAN_LIB})
 if(MSVC)

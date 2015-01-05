@@ -48,8 +48,8 @@ const char* ne7ssh::HOSTKEY_ALGORITHMS = "ssh-dss,ssh-rsa";
 const char* ne7ssh::COMPRESSION_ALGORITHMS = "none";
 char* ne7ssh::PREFERED_CIPHER = 0;
 char* ne7ssh::PREFERED_MAC = 0;
-std::mutex ne7ssh::_mutex;
-bool ne7ssh::running = false;
+std::recursive_mutex ne7ssh::_mutex;
+volatile bool ne7ssh::running = false;
 bool ne7ssh::selectActive = true;
 
 class Locking_AutoSeeded_RNG : public Botan::RandomNumberGenerator
@@ -67,13 +67,13 @@ public:
 
     void randomize(byte output[], size_t length)
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         rng->randomize(output, length);
     }
 
     void clear() throw()
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         rng->clear();
     }
 
@@ -84,24 +84,24 @@ public:
 
     void reseed(size_t bits_to_collect)
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         rng->reseed(bits_to_collect);
     }
 
     void add_entropy_source(EntropySource* source)
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         rng->add_entropy_source(source);
     }
 
     void add_entropy(const byte in[], size_t length)
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         rng->add_entropy(in, length);
     }
 
 private:
-    std::mutex _mutex;
+    std::recursive_mutex _mutex;
     Botan::RandomNumberGenerator* rng;
 };
 
@@ -111,7 +111,7 @@ ne7ssh::ne7ssh() : connections(0), conCount(0)
     if (ne7ssh::running)
     {
         errs->push(-1, "Cannot initialize more than more instance of ne7ssh class within the same application. Aborting.");
-        kill(0, SIGABRT);
+        // FIXME: throw exception
         return;
     }
     init = new LibraryInitializer("thread_safe");
@@ -133,12 +133,17 @@ ne7ssh::~ne7ssh()
     uint32 i;
 
     ne7ssh::running = false;
+    try
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         for (i = 0; i < conCount; i++)
         {
             close(i);
         }
+    }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
     }
     _selectThread.join();
 
@@ -195,8 +200,11 @@ void* ne7ssh::selectThread(void* initData)
 
     while (running)
     {
+        try
         {
-            std::unique_lock<std::mutex> lock(_mutex);
+            fdIsSet = false;
+            rfds = 0;
+            std::unique_lock<std::recursive_mutex> lock(_mutex);
             allConns = _ssh->getConnetions();
             for (i = 0; i < allConns->count; i++)
             {
@@ -209,10 +217,7 @@ void* ne7ssh::selectThread(void* initData)
             waitTime.tv_sec = 0;
             waitTime.tv_usec = 10000;
 
-            rfds = 0;
-
             FD_ZERO(&rd);
-            fdIsSet = false;
 
             for (i = 0; i < allConns->count; i++)
             {
@@ -248,6 +253,10 @@ void* ne7ssh::selectThread(void* initData)
                 }
             }
         }
+        catch (const std::system_error &ex)
+        {
+            errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
+        }
 
         if (fdIsSet)
         {
@@ -270,8 +279,9 @@ void* ne7ssh::selectThread(void* initData)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
+        try
         {
-            std::unique_lock<std::mutex> lock(_mutex);
+            std::unique_lock<std::recursive_mutex> lock(_mutex);
 
             allConns = _ssh->getConnetions();
             for (i = 0; i < allConns->count; i++)
@@ -281,6 +291,10 @@ void* ne7ssh::selectThread(void* initData)
                     allConns->conns[i]->handleData();
                 }
             }
+        }
+        catch (const std::system_error &ex)
+        {
+            errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
         }
     }
     return 0;
@@ -293,9 +307,9 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
     uint32 channelID;
 
     ne7ssh_connection* con = new ne7ssh_connection();
-
+    try
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         if (!conCount)
         {
             connections = (ne7ssh_connection**) malloc(sizeof (ne7ssh_connection*));
@@ -310,34 +324,48 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
         channelID = getChannelNo();
         con->setChannelNo(channelID);
     }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock in connectWithPassword %s.", ex.what());
+        return -1;
+    }
+
     channel = con->connectWithPassword(channelID, host, port, username, password, shell, timeout);
 
     if (channel == -1)
     {
-        std::unique_lock<std::mutex> lock(_mutex);
-        for (z = 0; z < allConns.count; z++)
+        try
         {
-            if (allConns.conns[z] == con)
+            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            for (z = 0; z < allConns.count; z++)
             {
-                currentRecord = z;
-                break;
+                if (allConns.conns[z] == con)
+                {
+                    currentRecord = z;
+                    break;
+                }
             }
+            if (z == allConns.count)
+            {
+                ne7ssh::errors()->push(-1, "Unexpected behaviour!");
+                return -1;
+            }
+
+            delete con;
+            allConns.conns[currentRecord] = 0;
+            allConns.count--;
+            for (z = currentRecord; z < allConns.count; z++)
+            {
+                allConns.conns[z] = allConns.conns[z + 1];
+                allConns.conns[z + 1] = 0;
+            }
+            conCount = allConns.count;
         }
-        if (z == allConns.count)
+        catch (const std::system_error &ex)
         {
-            ne7ssh::errors()->push(-1, "Unexpected behaviour!");
+            errs->push(-1, "Unable to get lock in connectWithPassword %s.", ex.what());
             return -1;
         }
-
-        delete con;
-        allConns.conns[currentRecord] = 0;
-        allConns.count--;
-        for (z = currentRecord; z < allConns.count; z++)
-        {
-            allConns.conns[z] = allConns.conns[z + 1];
-            allConns.conns[z + 1] = 0;
-        }
-        conCount = allConns.count;
     }
     return channel;
 }
@@ -349,8 +377,9 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
     uint32 channelID;
 
     ne7ssh_connection* con = new ne7ssh_connection();
+    try
     {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
         if (!conCount)
         {
             connections = (ne7ssh_connection**) malloc(sizeof (ne7ssh_connection*) * (conCount + 1));
@@ -365,35 +394,48 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
         channelID = getChannelNo();
         con->setChannelNo(channelID);
     }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock in connectWithKey %s.", ex.what());
+        return -1;
+    }
 
     channel = con->connectWithKey(channelID, host, port, username, privKeyFileName, shell, timeout);
 
     if (channel == -1)
     {
-        std::unique_lock<std::mutex> lock(_mutex);
-        for (z = 0; z < allConns.count; z++)
+        try
         {
-            if (allConns.conns[z] == con)
+            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            for (z = 0; z < allConns.count; z++)
             {
-                currentRecord = z;
-                break;
+                if (allConns.conns[z] == con)
+                {
+                    currentRecord = z;
+                    break;
+                }
             }
+            if (z == allConns.count)
+            {
+                ne7ssh::errors()->push(-1, "Unexpected behaviour!");
+                return -1;
+            }
+
+            delete con;
+            allConns.conns[currentRecord] = 0;
+            allConns.count--;
+            for (z = currentRecord; z < allConns.count; z++)
+            {
+                allConns.conns[z] = allConns.conns[z + 1];
+                allConns.conns[z + 1] = 0;
+            }
+            conCount = allConns.count;
         }
-        if (z == allConns.count)
+        catch (const std::system_error &ex)
         {
-            ne7ssh::errors()->push(-1, "Unexpected behaviour!");
+            errs->push(-1, "Unable to get lock in connectWithKey %s.", ex.what());
             return -1;
         }
-
-        delete con;
-        allConns.conns[currentRecord] = 0;
-        allConns.count--;
-        for (z = currentRecord; z < allConns.count; z++)
-        {
-            allConns.conns[z] = allConns.conns[z + 1];
-            allConns.conns[z + 1] = 0;
-        }
-        conCount = allConns.count;
     }
     return channel;
 }
@@ -401,15 +443,22 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
 bool ne7ssh::send(const char* data, int channel)
 {
     uint32 i;
-
-    std::unique_lock<std::mutex> lock(_mutex);
-    for (i = 0; i < conCount; i++)
+    try
     {
-        if (channel == connections[i]->getChannelNo())
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        for (i = 0; i < conCount; i++)
         {
-            connections[i]->sendData(data);
-            return true;
+            if (channel == connections[i]->getChannelNo())
+            {
+                connections[i]->sendData(data);
+                return true;
+            }
         }
+    }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
     }
     errs->push(-1, "Bad channel: %i specified for sending.", channel);
     return false;
@@ -420,24 +469,33 @@ bool ne7ssh::initSftp(Ne7SftpSubsystem& _sftp, int channel)
     uint32 i;
     Ne7sshSftp* __sftp;
 
-    std::unique_lock<std::mutex> lock(_mutex);
-    for (i = 0; i < conCount; i++)
+    try
     {
-        if (channel == connections[i]->getChannelNo())
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        for (i = 0; i < conCount; i++)
         {
-            __sftp = connections[i]->startSftp();
-            if (!__sftp)
+            if (channel == connections[i]->getChannelNo())
             {
-                return false;
-            }
-            else
-            {
-                Ne7SftpSubsystem sftpSubsystem(__sftp);
-                _sftp = sftpSubsystem;
-                return true;
+                __sftp = connections[i]->startSftp();
+                if (!__sftp)
+                {
+                    return false;
+                }
+                else
+                {
+                    Ne7SftpSubsystem sftpSubsystem(__sftp);
+                    _sftp = sftpSubsystem;
+                    return true;
+                }
             }
         }
     }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
+    }
+
     errs->push(-1, "Bad channel: %i specified. Cannot initialize SFTP subsystem.", channel);
     return false;
 }
@@ -452,76 +510,83 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
     {
         cutoff = time(NULL) + timeout;
     }
-
-    std::unique_lock<std::mutex> lock(_mutex);
-    for (i = 0; i < conCount; i++)
+    try
     {
-        if (channel == connections[i]->getChannelNo())
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        for (i = 0; i < conCount; i++)
         {
-            status = connections[i]->sendCmd(cmd);
-            if (!status)
+            if (channel == connections[i]->getChannelNo())
             {
-                return false;
-            }
+                status = connections[i]->sendCmd(cmd);
+                if (!status)
+                {
+                    return false;
+                }
 
-            if (!timeout)
-            {
-                while (!connections[i]->getCmdComplete())
+                if (!timeout)
                 {
-                    for (i = 0; i < conCount; i++)
+                    while (!connections[i]->getCmdComplete())
                     {
-                        if (channel == connections[i]->getChannelNo())
+                        for (i = 0; i < conCount; i++)
                         {
-                            break;
+                            if (channel == connections[i]->getChannelNo())
+                            {
+                                break;
+                            }
                         }
-                    }
-                    if (i == conCount)
-                    {
-                        errs->push(-1, "Bad channel: %i specified for sending.", channel);
-                        return false;
-                    }
-                    if (!connections[i]->getCmdComplete())
-                    {
-                        _mutex.unlock();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                        _mutex.lock();
-                    }
-                }
-            }
-            else if (timeout > 0)
-            {
-                while (!connections[i]->getCmdComplete())
-                {
-                    for (i = 0; i < conCount; i++)
-                    {
-                        if (channel == connections[i]->getChannelNo())
+                        if (i == conCount)
                         {
-                            break;
+                            errs->push(-1, "Bad channel: %i specified for sending.", channel);
+                            return false;
                         }
-                    }
-                    if (i == conCount)
-                    {
-                        errs->push(-1, "Bad channel: %i specified for sending.", channel);
-                        return false;
-                    }
-                    if (!connections[i]->getCmdComplete())
-                    {
-                        _mutex.unlock();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                        _mutex.lock();
-                        if (!cutoff)
+                        if (!connections[i]->getCmdComplete())
                         {
-                            continue;
-                        }
-                        if (time(NULL) >= cutoff)
-                        {
-                            break;
+                            _mutex.unlock();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            _mutex.lock();
                         }
                     }
                 }
+                else if (timeout > 0)
+                {
+                    while (!connections[i]->getCmdComplete())
+                    {
+                        for (i = 0; i < conCount; i++)
+                        {
+                            if (channel == connections[i]->getChannelNo())
+                            {
+                                break;
+                            }
+                        }
+                        if (i == conCount)
+                        {
+                            errs->push(-1, "Bad channel: %i specified for sending.", channel);
+                            return false;
+                        }
+                        if (!connections[i]->getCmdComplete())
+                        {
+                            _mutex.unlock();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            _mutex.lock();
+                            if (!cutoff)
+                            {
+                                continue;
+                            }
+                            if (time(NULL) >= cutoff)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+                return true;
             }
-            return true;
         }
+    }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
     }
     errs->push(-1, "Bad channel: %i specified for sending.", channel);
     return false;
@@ -537,16 +602,23 @@ bool ne7ssh::close(int channel)
         errs->push(-1, "Bad channel: %i specified for closing.", channel);
         return false;
     }
-
-    std::unique_lock<std::mutex> lock(_mutex);
-    for (i = 0; i < conCount; i++)
+    try
     {
-        if (channel == connections[i]->getChannelNo())
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        for (i = 0; i < conCount; i++)
         {
-            status = connections[i]->sendClose();
+            if (channel == connections[i]->getChannelNo())
+            {
+                status = connections[i]->sendClose();
+            }
         }
+        errs->deleteChannel(channel);
     }
-    errs->deleteChannel(channel);
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
+    }
 
     return status;
 }
@@ -575,12 +647,13 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
 
     while (forever)
     {
+        try
         {
-            std::unique_lock<std::mutex> lock(_mutex);
-            buffer = read(channel, false);
+            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            buffer = read(channel);
             if (buffer)
             {
-                len = getReceivedSize(channel, false);
+                len = getReceivedSize(channel);
                 if (!(cutoff && prevLen && len == prevLen))
                 {
                     prevLen = len;
@@ -603,6 +676,12 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
                 }
             }
         }
+        catch (const std::system_error &ex)
+        {
+            errs->push(-1, "Unable to get lock %s", ex.what());
+            return false;
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         if (!cutoff)
         {
@@ -616,7 +695,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
     return false;
 }
 
-const char* ne7ssh::read(int channel, bool do_lock)
+const char* ne7ssh::read(int channel)
 {
     uint32 i;
     SecureVector<Botan::byte> data;
@@ -626,22 +705,27 @@ const char* ne7ssh::read(int channel, bool do_lock)
         errs->push(-1, "Bad channel: %i specified for reading.", channel);
         return NULL;
     }
-    std::unique_lock<std::mutex> lock(_mutex, std::defer_lock);
-    if (do_lock == true)
+    try
     {
-        _mutex.lock();
-    }
-    for (i = 0; i < conCount; i++)
-    {
-        if (channel == connections[i]->getChannelNo())
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        for (i = 0; i < conCount; i++)
         {
-            data = connections[i]->getReceived();
-            if (data.size())
+            if (channel == connections[i]->getChannelNo())
             {
-                return ((const char*)connections[i]->getReceived().begin());
+                data = connections[i]->getReceived();
+                if (data.size())
+                {
+                    return ((const char*)connections[i]->getReceived().begin());
+                }
             }
         }
     }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
+    }
+
     return NULL;
 }
 
@@ -655,47 +739,60 @@ void* ne7ssh::readBinary(int channel)
         errs->push(-1, "Bad channel: %i specified for reading.", channel);
         return NULL;
     }
-
-    std::unique_lock<std::mutex> lock(_mutex, std::defer_lock);
-    for (i = 0; i < conCount; i++)
+    try
     {
-        if (channel == connections[i]->getChannelNo())
+        std::unique_lock<std::recursive_mutex> lock(_mutex, std::defer_lock);
+        for (i = 0; i < conCount; i++)
         {
-            data = connections[i]->getReceived();
-            if (data.size())
+            if (channel == connections[i]->getChannelNo())
             {
-                return ((void*)connections[i]->getReceived().begin());
+                data = connections[i]->getReceived();
+                if (data.size())
+                {
+                    return ((void*)connections[i]->getReceived().begin());
+                }
             }
         }
     }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
+    }
+
     return NULL;
 }
 
-int ne7ssh::getReceivedSize(int channel, bool do_lock)
+int ne7ssh::getReceivedSize(int channel)
 {
     uint32 i;
     int size;
-    std::unique_lock<std::mutex> lock(_mutex, std::defer_lock);
+    try
+    {
+        std::unique_lock<std::recursive_mutex> lock(_mutex);
 
-    if (do_lock == true)
-    {
-        _mutex.lock();
-    }
-    for (i = 0; i < conCount; i++)
-    {
-        if (channel == connections[i]->getChannelNo())
+        for (i = 0; i < conCount; i++)
         {
-            if (!connections[i]->getReceived().size())
+            if (channel == connections[i]->getChannelNo())
             {
-                return 0;
-            }
-            else
-            {
-                size = connections[i]->getReceived().size();
-                return (size);
+                if (!connections[i]->getReceived().size())
+                {
+                    return 0;
+                }
+                else
+                {
+                    size = connections[i]->getReceived().size();
+                    return (size);
+                }
             }
         }
     }
+    catch (const std::system_error &ex)
+    {
+        errs->push(-1, "Unable to get lock %s", ex.what());
+        return false;
+    }
+
     return 0;
 }
 
