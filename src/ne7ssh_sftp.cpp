@@ -214,7 +214,7 @@ bool Ne7sshSftp::receiveUntil(uint8 _cmd, uint32 timeSec)
 
         prevSize = commBuffer.length();
 
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         if (sftpCmd == _cmd)
         {
@@ -271,7 +271,7 @@ bool Ne7sshSftp::receiveWhile(uint8 _cmd, uint32 timeSec)
 
         prevSize = commBuffer.length();
 
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         if (sftpCmd != _cmd)
         {

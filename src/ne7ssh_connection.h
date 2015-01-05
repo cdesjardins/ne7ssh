@@ -40,7 +40,7 @@ private:
     ne7ssh_channel* channel;
     Ne7sshSftp* sftp;
 
-    Ne7ssh_Mutex mut;
+    std::mutex _mut;
     bool connected;
     bool cmdRunning;
     bool cmdClosed;
