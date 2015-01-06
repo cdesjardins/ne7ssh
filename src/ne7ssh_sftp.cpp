@@ -25,7 +25,13 @@
 
 using namespace Botan;
 
-Ne7sshSftp::Ne7sshSftp(ne7ssh_session* session, ne7ssh_channel* channel) : ne7ssh_channel(session), _session(session), _timeout(30), _seq(1), _sftpCmd(0), _lastError(0)
+Ne7sshSftp::Ne7sshSftp(std::shared_ptr<ne7ssh_session> session, std::shared_ptr<ne7ssh_channel> channel)
+    : ne7ssh_channel(session), 
+    _session(session), 
+    _timeout(30), 
+    _seq(1), 
+    _sftpCmd(0), 
+    _lastError(0)
 {
     _windowRecv = channel->getRecvWindow();
     _windowSend = channel->getSendWindow();
@@ -37,7 +43,7 @@ Ne7sshSftp::~Ne7sshSftp()
 
 bool Ne7sshSftp::init()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     ne7ssh_string packet;
     bool status;
 
@@ -48,7 +54,7 @@ bool Ne7sshSftp::init()
     packet.addChar(0);
     packet.addString("sftp");
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -63,7 +69,7 @@ bool Ne7sshSftp::init()
 
     _windowSend -= 9;
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -154,15 +160,15 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
 
 bool Ne7sshSftp::receiveWindowAdjust()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> packet;
 
-    if (!_transport->waitForPacket(SSH2_MSG_CHANNEL_WINDOW_ADJUST))
+    if (!transport->waitForPacket(SSH2_MSG_CHANNEL_WINDOW_ADJUST))
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "Remote side could not adjust the Window.");
         return false;
     }
-    _transport->getPacket(packet);
+    transport->getPacket(packet);
     if (!handleReceived(packet))
     {
         return false;
@@ -172,7 +178,7 @@ bool Ne7sshSftp::receiveWindowAdjust()
 
 bool Ne7sshSftp::receiveUntil(uint8 cmd, uint32 timeSec)
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     uint32 cutoff = timeSec * 1000000, timeout = 0;
     uint32 prevSize = 0;
@@ -184,10 +190,10 @@ bool Ne7sshSftp::receiveUntil(uint8 cmd, uint32 timeSec)
 
     while (forever)
     {
-        status = _transport->waitForPacket(0, false);
+        status = transport->waitForPacket(0, false);
         if (status > 0)
         {
-            _transport->getPacket(packet);
+            transport->getPacket(packet);
             if (!handleReceived(packet))
             {
                 return false;
@@ -225,7 +231,7 @@ bool Ne7sshSftp::receiveUntil(uint8 cmd, uint32 timeSec)
 
 bool Ne7sshSftp::receiveWhile(uint8 cmd, uint32 timeSec)
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     uint32 cutoff = timeSec * 1000000, timeout = 0;
     uint32 prevSize = 0;
@@ -237,10 +243,10 @@ bool Ne7sshSftp::receiveWhile(uint8 cmd, uint32 timeSec)
 
     while (forever)
     {
-        status = _transport->waitForPacket(0, false);
+        status = transport->waitForPacket(0, false);
         if (status > 0)
         {
-            _transport->getPacket(packet);
+            transport->getPacket(packet);
             if (!handleReceived(packet))
             {
                 return false;
@@ -439,7 +445,7 @@ uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
 {
     uint32 mode;
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     ne7ssh_string fullPath;
 
@@ -481,7 +487,7 @@ uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return 0;
     }
@@ -503,7 +509,7 @@ uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
 uint32 Ne7sshSftp::openDir(const char* dirname)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     ne7ssh_string fullPath = getFullPath(dirname);
 
@@ -522,7 +528,7 @@ uint32 Ne7sshSftp::openDir(const char* dirname)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return 0;
     }
@@ -544,7 +550,7 @@ uint32 Ne7sshSftp::openDir(const char* dirname)
 bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
 
@@ -566,7 +572,7 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -581,7 +587,7 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
 bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 offset)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
     uint32 sent = 0, currentLen = 0;
@@ -637,7 +643,7 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
             return false;
         }
 
-        status = _transport->sendPacket(sendVector);
+        status = transport->sendPacket(sendVector);
         if (!status)
         {
             return false;
@@ -662,7 +668,7 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
 bool Ne7sshSftp::closeFile(uint32 fileID)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     uint16 i;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
@@ -683,7 +689,7 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -793,7 +799,7 @@ Ne7sshSftp::sftpFile* Ne7sshSftp::getFileHandle(uint32 fileID)
 bool Ne7sshSftp::getFileStats(const char* remoteFile, bool followSymLinks)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     uint8 cmd = followSymLinks ? SSH2_FXP_STAT : SSH2_FXP_LSTAT;
     ne7ssh_string fullPath = getFullPath(remoteFile);
@@ -819,7 +825,7 @@ bool Ne7sshSftp::getFileStats(const char* remoteFile, bool followSymLinks)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -833,7 +839,7 @@ bool Ne7sshSftp::getFileStats(const char* remoteFile, bool followSymLinks)
 bool Ne7sshSftp::getFStat(uint32 fileID)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
 
@@ -852,7 +858,7 @@ bool Ne7sshSftp::getFStat(uint32 fileID)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1076,7 +1082,7 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
 bool Ne7sshSftp::rm(const char* remoteFile)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     if (!remoteFile)
     {
@@ -1099,7 +1105,7 @@ bool Ne7sshSftp::rm(const char* remoteFile)
         return false;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1113,7 +1119,7 @@ bool Ne7sshSftp::rm(const char* remoteFile)
 bool Ne7sshSftp::mv(const char* oldFile, const char* newFile)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     if (!oldFile || !newFile)
     {
@@ -1138,7 +1144,7 @@ bool Ne7sshSftp::mv(const char* oldFile, const char* newFile)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1152,7 +1158,7 @@ bool Ne7sshSftp::mv(const char* oldFile, const char* newFile)
 bool Ne7sshSftp::mkdir(const char* remoteDir)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     if (!remoteDir)
     {
@@ -1176,7 +1182,7 @@ bool Ne7sshSftp::mkdir(const char* remoteDir)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1190,7 +1196,7 @@ bool Ne7sshSftp::mkdir(const char* remoteDir)
 bool Ne7sshSftp::rmdir(const char* remoteDir)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     if (!remoteDir)
     {
@@ -1213,7 +1219,7 @@ bool Ne7sshSftp::rmdir(const char* remoteDir)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1227,7 +1233,7 @@ bool Ne7sshSftp::rmdir(const char* remoteDir)
 const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     ne7ssh_string tmpVar;
     SecureVector<Botan::byte> fileName;
     bool status = true;
@@ -1265,7 +1271,7 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
             return 0;
         }
 
-        if (!_transport->sendPacket(packet.value()))
+        if (!transport->sendPacket(packet.value()))
         {
             return 0;
         }
@@ -1311,7 +1317,7 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
 bool Ne7sshSftp::cd(const char* remoteDir)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> fileName;
     uint32 fileCount;
     bool status;
@@ -1338,7 +1344,7 @@ bool Ne7sshSftp::cd(const char* remoteDir)
         return false;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1368,7 +1374,7 @@ bool Ne7sshSftp::cd(const char* remoteDir)
 bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     if (!remoteFile)
     {
@@ -1619,7 +1625,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
         return 0;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -1633,7 +1639,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
 bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
 {
     Ne7sshSftpPacket packet(_session->getSendChannel());
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     bool status;
     uint32 old_uid, old_gid;
     if (!remoteFile)
@@ -1682,7 +1688,7 @@ bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
         return false;
     }
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }

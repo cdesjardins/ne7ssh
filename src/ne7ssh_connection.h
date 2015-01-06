@@ -32,13 +32,13 @@
 class ne7ssh_connection
 {
 private:
+    std::shared_ptr<ne7ssh_session> _session;
     SOCKET _sock;
     int _thisChannel;
-    ne7ssh_crypt* _crypto;
-    ne7ssh_transport* _transport;
-    ne7ssh_session* _session;
-    ne7ssh_channel* _channel;
-    Ne7sshSftp* _sftp;
+    std::shared_ptr<ne7ssh_crypt> _crypto;
+    std::shared_ptr<ne7ssh_transport> _transport;
+    std::shared_ptr<ne7ssh_channel> _channel;
+    std::shared_ptr<Ne7sshSftp> _sftp;
 
     std::recursive_mutex _mut;
     bool _connected;
@@ -255,7 +255,7 @@ public:
     * Starts a new sftp subsystem.
     * @return Returns a pointer to the newly started Ne7sshSftp instance.
     */
-    Ne7sshSftp* startSftp();
+    std::shared_ptr<Ne7sshSftp> startSftp();
 
     /**
     * Checks if SFTP subsystem is active on the current connection.

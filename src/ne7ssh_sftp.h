@@ -105,7 +105,7 @@ class ne7ssh_transport;
 class Ne7sshSftp : public ne7ssh_channel
 {
 private:
-    ne7ssh_session* _session;
+    std::shared_ptr<ne7ssh_session> _session;
     uint32 _timeout;
     uint32 _seq;
     uint8 _sftpCmd;
@@ -271,7 +271,7 @@ public:
     * @param _session Pointer to connections session data.
     * @param _channel Pointer to the ne7ssh_channel instance, taken from the new ne7ssh_connection instance.
     */
-    Ne7sshSftp(ne7ssh_session* session, ne7ssh_channel* channel);
+    Ne7sshSftp(std::shared_ptr<ne7ssh_session> session, std::shared_ptr<ne7ssh_channel> channel);
 
     /**
     * Default destructor.

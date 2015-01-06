@@ -260,7 +260,7 @@ class SSH_EXPORT Ne7SftpSubsystem
 {
 private:
     bool _inited;
-    Ne7sshSftp* _sftp;
+    std::shared_ptr<Ne7sshSftp> _sftp;
 
 /**
  * Pushes and error to the error buffer, if this subsystem has not been initialized before usage.
@@ -292,7 +292,7 @@ public:
      * Constructor used to initialize the subsystem with a new Ne7sshSftp class instance.
      * @param _sftp Ne7sshSftp class instance.
      */
-    Ne7SftpSubsystem (class Ne7sshSftp* _sftp);
+    Ne7SftpSubsystem (class std::shared_ptr<Ne7sshSftp> sftp);
 
     /**
      * Default destructor.

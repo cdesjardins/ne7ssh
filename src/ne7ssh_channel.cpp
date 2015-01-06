@@ -23,7 +23,7 @@ using namespace Botan;
 
 //uint32 ne7ssh_channel::channelCount = 0;
 
-ne7ssh_channel::ne7ssh_channel(ne7ssh_session* session) : _eof(false), _closed(false), _cmdComplete(false), _shellSpawned(false), _session(session), _channelOpened(false)
+ne7ssh_channel::ne7ssh_channel(std::shared_ptr<ne7ssh_session> session) : _eof(false), _closed(false), _cmdComplete(false), _shellSpawned(false), _session(session), _channelOpened(false)
 {
 }
 
@@ -34,7 +34,7 @@ ne7ssh_channel::~ne7ssh_channel()
 uint32 ne7ssh_channel::open(uint32 channelID)
 {
     ne7ssh_string packet;
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
 
     packet.addChar(SSH2_MSG_CHANNEL_OPEN);
     packet.addString("session");
@@ -45,11 +45,11 @@ uint32 ne7ssh_channel::open(uint32 channelID)
     packet.addInt(_windowRecv);
     packet.addInt(MAX_PACKET_LEN);
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return 0;
     }
-    if (!_transport->waitForPacket(SSH2_MSG_CHANNEL_OPEN_CONFIRMATION))
+    if (!transport->waitForPacket(SSH2_MSG_CHANNEL_OPEN_CONFIRMATION))
     {
         ne7ssh::errors()->push(-1, "New channel: %i could not be open.", channelID);
         return 0;
@@ -68,9 +68,9 @@ uint32 ne7ssh_channel::open(uint32 channelID)
 
 bool ne7ssh_channel::handleChannelConfirm()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> packet;
-    _transport->getPacket(packet);
+    transport->getPacket(packet);
     ne7ssh_string channelConfirm(packet, 1);
     uint32 field;
 
@@ -150,7 +150,7 @@ bool ne7ssh_channel::handleDisconnect(Botan::SecureVector<Botan::byte>& packet)
 
 bool ne7ssh_channel::sendClose()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     ne7ssh_string packet;
 
     if (_closed)
@@ -160,7 +160,7 @@ bool ne7ssh_channel::sendClose()
     packet.addChar(SSH2_MSG_CHANNEL_CLOSE);
     packet.addInt(_session->getSendChannel());
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -172,7 +172,7 @@ bool ne7ssh_channel::sendClose()
 
 bool ne7ssh_channel::sendEof()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     ne7ssh_string packet;
 
     if (_closed)
@@ -182,7 +182,7 @@ bool ne7ssh_channel::sendEof()
     packet.addChar(SSH2_MSG_CHANNEL_EOF);
     packet.addInt(_session->getSendChannel());
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -196,14 +196,14 @@ void ne7ssh_channel::sendAdjustWindow()
 {
     uint32 len = _session->getMaxPacket() - _windowRecv - 2400;
     ne7ssh_string packet;
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
 
     packet.addChar(SSH2_MSG_CHANNEL_WINDOW_ADJUST);
     packet.addInt(_session->getSendChannel());
     packet.addInt(len);
     _windowRecv = len;
 
-    _transport->sendPacket(packet.value());
+    transport->sendPacket(packet.value());
 }
 
 bool ne7ssh_channel::handleData(Botan::SecureVector<Botan::byte>& packet)
@@ -294,7 +294,7 @@ void ne7ssh_channel::handleRequest(Botan::SecureVector<Botan::byte>& packet)
 
 bool ne7ssh_channel::execCmd(const char* cmd)
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     ne7ssh_string packet;
 
     if (this->_shellSpawned)
@@ -310,7 +310,7 @@ bool ne7ssh_channel::execCmd(const char* cmd)
     packet.addChar(0);
     packet.addString(cmd);
 
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return false;
     }
@@ -321,7 +321,7 @@ bool ne7ssh_channel::execCmd(const char* cmd)
 
 void ne7ssh_channel::getShell()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     ne7ssh_string packet;
 
     packet.clear();
@@ -335,7 +335,7 @@ void ne7ssh_channel::getShell()
     packet.addInt(0);
     packet.addInt(0);
     packet.addString("");
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return;
     }
@@ -345,7 +345,7 @@ void ne7ssh_channel::getShell()
     packet.addInt(_session->getSendChannel());
     packet.addString("shell");
     packet.addChar(0);
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return;
     }
@@ -354,7 +354,7 @@ void ne7ssh_channel::getShell()
 
 void ne7ssh_channel::receive()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     bool notFirst = false;
     short status;
@@ -366,7 +366,7 @@ void ne7ssh_channel::receive()
 
     do
     {
-        status = _transport->waitForPacket(0, notFirst);
+        status = transport->waitForPacket(0, notFirst);
         if (status == -1)
         {
             _eof = true;
@@ -380,7 +380,7 @@ void ne7ssh_channel::receive()
             {
                 notFirst = true;
             }
-            _transport->getPacket(packet);
+            transport->getPacket(packet);
             handleReceived(packet);
         }
     } while (status != 0);
@@ -498,7 +498,7 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
 
 void ne7ssh_channel::sendAll()
 {
-    ne7ssh_transport* _transport = _session->_transport;
+    std::shared_ptr<ne7ssh_transport> transport = _session->_transport;
     SecureVector<Botan::byte> tmpVar;
     ne7ssh_string packet;
 
@@ -519,7 +519,7 @@ void ne7ssh_channel::sendAll()
 
     _windowSend -= _outBuffer.length();
     _inBuffer.clear();
-    if (!_transport->sendPacket(packet.value()))
+    if (!transport->sendPacket(packet.value()))
     {
         return;
     }

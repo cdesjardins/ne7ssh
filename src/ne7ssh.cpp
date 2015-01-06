@@ -379,10 +379,10 @@ bool ne7ssh::send(const char* data, int channel)
     return false;
 }
 
-bool ne7ssh::initSftp(Ne7SftpSubsystem& _sftp, int channel)
+bool ne7ssh::initSftp(Ne7SftpSubsystem& sftpSubsys, int channel)
 {
     uint32 i;
-    Ne7sshSftp* __sftp;
+    std::shared_ptr<Ne7sshSftp> sftp;
 
     try
     {
@@ -391,15 +391,15 @@ bool ne7ssh::initSftp(Ne7SftpSubsystem& _sftp, int channel)
         {
             if (channel == _connections[i]->getChannelNo())
             {
-                __sftp = _connections[i]->startSftp();
-                if (!__sftp)
+                sftp = _connections[i]->startSftp();
+                if (!sftp)
                 {
                     return false;
                 }
                 else
                 {
-                    Ne7SftpSubsystem sftpSubsystem(__sftp);
-                    _sftp = sftpSubsystem;
+                    Ne7SftpSubsystem sftpSubsystem(sftp);
+                    sftpSubsys = sftpSubsystem;
                     return true;
                 }
             }
@@ -812,7 +812,9 @@ Ne7SftpSubsystem::Ne7SftpSubsystem () : _inited(false), _sftp(0)
 {
 }
 
-Ne7SftpSubsystem::Ne7SftpSubsystem (Ne7sshSftp* _sftp) : _inited(true), _sftp((Ne7sshSftp*)_sftp)
+Ne7SftpSubsystem::Ne7SftpSubsystem (std::shared_ptr<Ne7sshSftp> sftp) 
+    : _inited(true),
+    _sftp(sftp)
 {
 }
 

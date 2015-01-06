@@ -20,27 +20,23 @@
 
 using namespace Botan;
 
-ne7ssh_connection::ne7ssh_connection() : _sock((SOCKET)-1), _thisChannel(0), _sftp(0), _connected(false), _cmdRunning(false), _cmdClosed(false)
+ne7ssh_connection::ne7ssh_connection()
+    : _session(new ne7ssh_session()),
+    _sock((SOCKET)-1),
+    _thisChannel(0),
+    _crypto(new ne7ssh_crypt(_session)),
+    _transport(new ne7ssh_transport(_session)),
+    _channel(new ne7ssh_channel(_session)),
+    _connected(false),
+    _cmdRunning(false),
+    _cmdClosed(false)
 {
-    _session = new ne7ssh_session();
-    _crypto = new ne7ssh_crypt(_session);
-    _transport = new ne7ssh_transport(_session);
-    _channel = new ne7ssh_channel(_session);
     _session->_transport = _transport;
     _session->_crypto = _crypto;
 }
 
 ne7ssh_connection::~ne7ssh_connection()
 {
-    delete _channel;
-    delete _transport;
-    delete _crypto;
-    delete _session;
-
-    if (_sftp)
-    {
-        delete _sftp;
-    }
 }
 
 int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, short port, const char* username, const char* password, bool shell, int timeout)
@@ -196,7 +192,7 @@ bool ne7ssh_connection::requestService(const char* service)
 
 bool ne7ssh_connection::authWithPassword(const char* username, const char* password)
 {
-    short _cmd;
+    short cmd;
     ne7ssh_string packet;
     SecureVector<Botan::byte> response;
     SecureVector<Botan::byte> methods;
@@ -212,12 +208,12 @@ bool ne7ssh_connection::authWithPassword(const char* username, const char* passw
     {
         return false;
     }
-    _cmd = _transport->waitForPacket(0);
-    if (_cmd == SSH2_MSG_USERAUTH_SUCCESS)
+    cmd = _transport->waitForPacket(0);
+    if (cmd == SSH2_MSG_USERAUTH_SUCCESS)
     {
         return true;
     }
-    else if (_cmd == SSH2_MSG_USERAUTH_BANNER)
+    else if (cmd == SSH2_MSG_USERAUTH_BANNER)
     {
         packet.clear();
         packet.addString(password);
@@ -225,14 +221,14 @@ bool ne7ssh_connection::authWithPassword(const char* username, const char* passw
         {
             return false;
         }
-        _cmd = _transport->waitForPacket(0);
-        if (_cmd == SSH2_MSG_USERAUTH_SUCCESS)
+        cmd = _transport->waitForPacket(0);
+        if (cmd == SSH2_MSG_USERAUTH_SUCCESS)
         {
             return true;
         }
     }
 
-    if (_cmd == SSH2_MSG_USERAUTH_FAILURE)
+    if (cmd == SSH2_MSG_USERAUTH_FAILURE)
     {
         _transport->getPacket(response);
         ne7ssh_string message(response, 1);
@@ -256,7 +252,7 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
     {
         return false;
     }
-    short _cmd;
+    short cmd;
     SecureVector<Botan::byte> response;
     SecureVector<Botan::byte> methods;
 
@@ -296,8 +292,8 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
         return false;
     }
 
-    _cmd = _transport->waitForPacket(0);
-    if (_cmd == SSH2_MSG_USERAUTH_FAILURE)
+    cmd = _transport->waitForPacket(0);
+    if (cmd == SSH2_MSG_USERAUTH_FAILURE)
     {
         _transport->getPacket(response);
         ne7ssh_string message(response, 1);
@@ -306,7 +302,7 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
         ne7ssh::errors()->push(-1, "Authentication failed. Supported methods are: %B", &methods);
         return false;
     }
-    else if (_cmd != SSH2_MSG_USERAUTH_PK_OK)
+    else if (cmd != SSH2_MSG_USERAUTH_PK_OK)
     {
         return false;
     }
@@ -329,12 +325,12 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
         return false;
     }
 
-    _cmd = _transport->waitForPacket(0);
-    if (_cmd == SSH2_MSG_USERAUTH_SUCCESS)
+    cmd = _transport->waitForPacket(0);
+    if (cmd == SSH2_MSG_USERAUTH_SUCCESS)
     {
         return true;
     }
-    else if (_cmd == SSH2_MSG_USERAUTH_FAILURE)
+    else if (cmd == SSH2_MSG_USERAUTH_FAILURE)
     {
         _transport->getPacket(response);
         ne7ssh_string message(response, 1);
@@ -400,8 +396,8 @@ void ne7ssh_connection::handleData()
 
 void ne7ssh_connection::sendData(const char* data)
 {
-    SecureVector<Botan::byte> _cmd((const Botan::byte*) data, (uint32_t) strlen(data));
-    _channel->write(_cmd);
+    SecureVector<Botan::byte> cmd((const Botan::byte*) data, (uint32_t)strlen(data));
+    _channel->write(cmd);
 }
 
 bool ne7ssh_connection::sendCmd(const char* cmd)
@@ -410,14 +406,14 @@ bool ne7ssh_connection::sendCmd(const char* cmd)
     return _channel->execCmd(cmd);
 }
 
-Ne7sshSftp* ne7ssh_connection::startSftp()
+std::shared_ptr<Ne7sshSftp> ne7ssh_connection::startSftp()
 {
     if (_channel->isRemoteShell())
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "Remote shell is running. SFTP subsystem cannot be started.");
         return 0;
     }
-    _sftp = new Ne7sshSftp(_session, _channel);
+    _sftp.reset(new Ne7sshSftp(_session, _channel));
 
     if (_sftp->init())
     {
@@ -444,8 +440,7 @@ bool ne7ssh_connection::sendClose()
     }
     if (isSftpActive())
     {
-        delete _sftp;
-        _sftp = 0;
+        _sftp.reset();
         status = _channel->sendClose();
         return status;
     }

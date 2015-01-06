@@ -33,7 +33,7 @@ private:
     bool _cmdComplete;
     bool _shellSpawned;
 
-    ne7ssh_session* _session;
+    std::shared_ptr<ne7ssh_session> _session;
     ne7ssh_string _inBuffer;
     ne7ssh_string _outBuffer;
     ne7ssh_string _delayedBuffer;
@@ -112,7 +112,7 @@ public:
      * ne7ssh_channel class consturctor.
      * @param _session Pointer to ne7ssh_session.
      */
-    ne7ssh_channel(ne7ssh_session* session);
+    ne7ssh_channel(std::shared_ptr<ne7ssh_session> session);
 
     /**
      * ne7ssh_channel class destructor.

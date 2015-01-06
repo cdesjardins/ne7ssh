@@ -36,8 +36,8 @@ private:
     int32 _channelID;
 
 public:
-    ne7ssh_transport* _transport;
-    ne7ssh_crypt* _crypto;
+    std::shared_ptr<ne7ssh_transport> _transport;
+    std::shared_ptr<ne7ssh_crypt> _crypto;
 
     /**
      * ne7ssh_session class constructor.

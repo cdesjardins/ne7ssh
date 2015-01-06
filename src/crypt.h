@@ -46,7 +46,7 @@ class ne7ssh_session;
 class ne7ssh_crypt
 {
 private:
-    ne7ssh_session* _session;
+    std::shared_ptr<ne7ssh_session> _session;
 
     enum kexMethods { DH_GROUP1_SHA1, DH_GROUP14_SHA1 };
     uint32 _kexMethod;
@@ -163,7 +163,7 @@ public:
      * ne7ssh_crypt class constructor.
      * @param _session Pointer to ne7ssh_session class.
      */
-    ne7ssh_crypt(ne7ssh_session* _session);
+    ne7ssh_crypt(std::shared_ptr<ne7ssh_session> session);
 
     /**
      * ne7ssh_crypt class destructor.

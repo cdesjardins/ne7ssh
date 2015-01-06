@@ -49,7 +49,7 @@ WSockInitializer _wsock32_;
 
 using namespace Botan;
 
-ne7ssh_transport::ne7ssh_transport(ne7ssh_session* session) : _seq(0), _rSeq(0), _session(session), _sock((SOCKET)-1)
+ne7ssh_transport::ne7ssh_transport(std::shared_ptr<ne7ssh_session> session) : _seq(0), _rSeq(0), _session(session), _sock((SOCKET)-1)
 {
 }
 
@@ -69,7 +69,7 @@ SOCKET ne7ssh_transport::establish(const char* host, short port, int timeout)
     remoteHost = gethostbyname(host);
     if (!remoteHost || remoteHost->h_length == 0)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Host: '%s' not found.", host);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Host: '%s' not found.", host);
         return (SOCKET)-1;
     }
     remoteAddr.sin_family = AF_INET;
@@ -79,7 +79,7 @@ SOCKET ne7ssh_transport::establish(const char* host, short port, int timeout)
     _sock = socket(AF_INET, SOCK_STREAM, 0);
     if (_sock < 0)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Failure to bind to socket.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failure to bind to socket.");
         return (SOCKET)-1;
     }
 
@@ -87,7 +87,7 @@ SOCKET ne7ssh_transport::establish(const char* host, short port, int timeout)
     {
         if (connect(_sock, (struct sockaddr*) &remoteAddr, sizeof(remoteAddr)))
         {
-            ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Unable to connect to remote server: '%s'.", host);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Unable to connect to remote server: '%s'.", host);
             return (SOCKET)-1;
         }
 
@@ -131,13 +131,13 @@ SOCKET ne7ssh_transport::establish(const char* host, short port, int timeout)
             {
                 if (!FD_ISSET(_sock, &rfds))
                 {
-                    ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Couldn't connect to remote server : timeout");
+                    ne7ssh::errors()->push(_session->getSshChannel(), "Couldn't connect to remote server : timeout");
                     return (SOCKET)-1;
                 }
             }
             if (status < 0)
             {
-                ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Couldn't connect to remote server during select");
+                ne7ssh::errors()->push(_session->getSshChannel(), "Couldn't connect to remote server during select");
                 return (SOCKET)-1;
             }
         }
@@ -151,7 +151,7 @@ bool ne7ssh_transport::NoBlock(SOCKET socket, bool on)
     int options;
     if ((options = fcntl(socket, F_GETFL)) < 0)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Cannot read options of the socket: %i.", (int)socket);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Cannot read options of the socket: %i.", (int)socket);
         return false;
     }
 
@@ -168,7 +168,7 @@ bool ne7ssh_transport::NoBlock(SOCKET socket, bool on)
     unsigned long options = on;
     if (ioctlsocket(socket, FIONBIO, &options))
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Cannot set asynch I/O on the socket: %i.", (int)socket);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Cannot set asynch I/O on the socket: %i.", (int)socket);
         return false;
     }
 #endif
@@ -243,7 +243,7 @@ bool ne7ssh_transport::send(Botan::SecureVector<Botan::byte>& buffer)
 
     if (buffer.size() > MAX_PACKET_LEN)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Cannot send. Packet too large for the transport layer.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Cannot send. Packet too large for the transport layer.");
         return false;
     }
 
@@ -279,19 +279,19 @@ bool ne7ssh_transport::receive(Botan::SecureVector<Botan::byte>& buffer, bool ap
 
     if (!len)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Received a packet of zero length.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Received a packet of zero length.");
         return false;
     }
 
     if (len > MAX_PACKET_LEN)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Received packet exceeds the maximum size");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Received packet exceeds the maximum size");
         return false;
     }
 
     if (len < 0)
     {
-        ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Connection dropped");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Connection dropped");
         return false;
     }
 
@@ -310,7 +310,7 @@ bool ne7ssh_transport::receive(Botan::SecureVector<Botan::byte>& buffer, bool ap
 
 bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
 {
-    ne7ssh_crypt* _crypto = _session->_crypto;
+    std::shared_ptr<ne7ssh_crypt> crypto = _session->_crypto;
     ne7ssh_string out;
     uint32 crypt_block;
     char padLen;
@@ -319,10 +319,10 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     SecureVector<Botan::byte> crypted, hmac;
 
 // No Zlib support right now
-//  if (_crypto->isInited()) _crypto->compressData (buffer);
+//  if (crypto->isInited()) crypto->compressData (buffer);
     length = buffer.size();
 
-    crypt_block = _crypto->getEncryptBlock();
+    crypt_block = crypto->getEncryptBlock();
     if (!crypt_block)
     {
         crypt_block = 8;
@@ -340,11 +340,11 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     out.addBytes(padBytes.get(), padLen);
     padBytes.reset();
 
-    if (_crypto->isInited())
+    if (crypto->isInited())
     {
-        if (!_crypto->encryptPacket(crypted, hmac, out.value(), _seq))
+        if (!crypto->encryptPacket(crypted, hmac, out.value(), _seq))
         {
-            ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Failure to encrypt the payload.");
+            ne7ssh::errors()->push(_session->getSshChannel(), "Failure to encrypt the payload.");
             return false;
         }
         crypted += hmac;
@@ -368,17 +368,17 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     return true;
 }
 
-short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
+short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
 {
-    ne7ssh_crypt* _crypto = _session->_crypto;
-    Botan::byte _cmd;
+    std::shared_ptr<ne7ssh_crypt> crypto = _session->_crypto;
+    Botan::byte cmd;
     SecureVector<Botan::byte> tmpVar, decrypted, uncommpressed, ourMac, hMac;
     uint32 len, cryptoLen;
     bool havePacket = false;
 
-/*  if (_crypto->isInited())
+/*  if (crypto->isInited())
   {
-    if (!in.is_empty()) _crypto->decryptPacket (tmpVar, in, _crypto->getDecryptBlock(), seq);
+    if (!in.is_empty()) crypto->decryptPacket (tmpVar, in, crypto->getDecryptBlock(), seq);
     else tmpVar.destroy();
   }
   else*/
@@ -386,20 +386,20 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
 
     if (!tmpVar.empty())
     {
-        if (_crypto->isInited())
+        if (crypto->isInited())
         {
             if (!_in.empty())
             {
-                _crypto->decryptPacket(tmpVar, _in, _crypto->getDecryptBlock());
+                crypto->decryptPacket(tmpVar, _in, crypto->getDecryptBlock());
             }
             else
             {
                 tmpVar.clear();
             }
         }
-        _cmd = *(tmpVar.begin() + 5);
+        cmd = *(tmpVar.begin() + 5);
 
-        if (_cmd > 0 && _cmd < 0xff)
+        if (cmd > 0 && cmd < 0xff)
         {
             havePacket = true;
         }
@@ -416,11 +416,11 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             return -1;
         }
 
-        if (_crypto->isInited())
+        if (crypto->isInited())
         {
             if (!_in.empty())
             {
-                _crypto->decryptPacket(tmpVar, _in, _crypto->getDecryptBlock());
+                crypto->decryptPacket(tmpVar, _in, crypto->getDecryptBlock());
             }
             else
             {
@@ -454,41 +454,41 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
     cryptoLen = len + sizeof(uint32);
 
     decrypted = tmpVar;
-    if (_crypto->isInited())
+    if (crypto->isInited())
     {
-        while (((cryptoLen + _crypto->getMacInLen()) > _in.size())/* || (in.size() % _crypto->getDecryptBlock())*/)
+        while (((cryptoLen + crypto->getMacInLen()) > _in.size())/* || (in.size() % crypto->getDecryptBlock())*/)
         {
             if (!receive(_in, true))
             {
                 return -1;
             }
         }
-        if (cryptoLen > _crypto->getDecryptBlock())
+        if (cryptoLen > crypto->getDecryptBlock())
         {
-            tmpVar = SecureVector<Botan::byte>(_in.begin() + _crypto->getDecryptBlock(), (cryptoLen - _crypto->getDecryptBlock()));
+            tmpVar = SecureVector<Botan::byte>(_in.begin() + crypto->getDecryptBlock(), (cryptoLen - crypto->getDecryptBlock()));
             if (!_in.empty())
             {
-                _crypto->decryptPacket(tmpVar, tmpVar, tmpVar.size());
+                crypto->decryptPacket(tmpVar, tmpVar, tmpVar.size());
             }
             decrypted += tmpVar;
         }
-        if (_crypto->getMacInLen())
+        if (crypto->getMacInLen())
         {
-            _crypto->computeMac(ourMac, decrypted, _rSeq);
-            hMac = SecureVector<Botan::byte>(_in.begin() + cryptoLen, _crypto->getMacInLen());
+            crypto->computeMac(ourMac, decrypted, _rSeq);
+            hMac = SecureVector<Botan::byte>(_in.begin() + cryptoLen, crypto->getMacInLen());
             if (hMac != ourMac)
             {
-                ne7ssh::errors()->push(((ne7ssh_session*)_session)->getSshChannel(), "Mismatched HMACs.");
+                ne7ssh::errors()->push(_session->getSshChannel(), "Mismatched HMACs.");
                 return -1;
             }
-            cryptoLen += _crypto->getMacInLen();
+            cryptoLen += crypto->getMacInLen();
         }
 
 // No Zlib support right now
-/*    if (_crypto->isCompressed())
+/*    if (crypto->isCompressed())
     {
       tmpVar.set (decrypted.begin() + 5, len);
-      _crypto->decompressData (tmpVar);
+      crypto->decompressData (tmpVar);
       uncommpressed.set (decrypted.begin(), 4);
       uncommpressed.append (tmpVar);
       decrypted.set (uncommpressed);
@@ -503,9 +503,9 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
     {
         _rSeq++;
     }
-    _cmd = *(decrypted.begin() + 5);
+    cmd = *(decrypted.begin() + 5);
 
-    if (cmd == _cmd || !cmd)
+    if (command == cmd || !command)
     {
         _inBuffer = decrypted;
         if (!(_in.size() - cryptoLen))
@@ -517,7 +517,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
             tmpVar.swap(_in);
             _in = SecureVector<Botan::byte>(tmpVar.begin() + cryptoLen, tmpVar.size() - cryptoLen);
         }
-        return _cmd;
+        return cmd;
     }
     else
     {
@@ -527,11 +527,11 @@ short ne7ssh_transport::waitForPacket(Botan::byte cmd, bool bufferOnly)
 
 uint32 ne7ssh_transport::getPacket(Botan::SecureVector<Botan::byte> &result)
 {
-    ne7ssh_crypt* _crypto = _session->_crypto;
+    std::shared_ptr<ne7ssh_crypt> crypto = _session->_crypto;
     SecureVector<Botan::byte> tmpVector(_inBuffer);
     uint32 len = ntohl(*((uint32*)tmpVector.begin()));
     Botan::byte padLen = *(tmpVector.begin() + 4);
-    uint32 macLen = _crypto->getMacInLen();
+    uint32 macLen = crypto->getMacInLen();
 
     if (_inBuffer.empty())
     {
@@ -539,7 +539,7 @@ uint32 ne7ssh_transport::getPacket(Botan::SecureVector<Botan::byte> &result)
         return 0;
     }
 
-    if (_crypto->isInited())
+    if (crypto->isInited())
     {
         len += macLen;
         if (len > tmpVector.size())
@@ -550,7 +550,7 @@ uint32 ne7ssh_transport::getPacket(Botan::SecureVector<Botan::byte> &result)
 
     tmpVector += SecureVector<Botan::byte>((uint8*)"\0", 1);
     result = SecureVector<Botan::byte>(tmpVector.begin() + 5, len);
-    _crypto->decompressData(result);
+    crypto->decompressData(result);
 
     _inBuffer.clear();
     return padLen;

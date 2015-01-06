@@ -29,7 +29,7 @@
 class ne7ssh_kex
 {
 private:
-    ne7ssh_session* _session;
+    std::shared_ptr<ne7ssh_session> _session;
     ne7ssh_string _localKex;
     ne7ssh_string _remotKex;
     ne7ssh_string _hostKey;
@@ -55,7 +55,7 @@ public:
      * ne7ssh_kex class constructor.
      * @param _session Pointer to ne7ssh_session variable.
      */
-    ne7ssh_kex(ne7ssh_session* session);
+    ne7ssh_kex(std::shared_ptr<ne7ssh_session> session);
 
     /**
      * ne7ssh_kex class destructor.

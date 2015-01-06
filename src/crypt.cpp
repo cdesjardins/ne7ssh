@@ -25,7 +25,7 @@
 
 using namespace Botan;
 
-ne7ssh_crypt::ne7ssh_crypt(ne7ssh_session* _session) : _session(_session), _kexMethod(DH_GROUP1_SHA1), _c2sCryptoMethod(AES128_CBC), _s2cCryptoMethod(AES128_CBC), _c2sMacMethod(HMAC_MD5), _s2cMacMethod(HMAC_MD5), _inited(false), _encryptBlock(0), _decryptBlock(0)
+ne7ssh_crypt::ne7ssh_crypt(std::shared_ptr<ne7ssh_session> session) : _session(session), _kexMethod(DH_GROUP1_SHA1), _c2sCryptoMethod(AES128_CBC), _s2cCryptoMethod(AES128_CBC), _c2sMacMethod(HMAC_MD5), _s2cMacMethod(HMAC_MD5), _inited(false), _encryptBlock(0), _decryptBlock(0)
 {
 }
 
