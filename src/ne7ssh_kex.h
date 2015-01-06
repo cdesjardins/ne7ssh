@@ -21,7 +21,6 @@
 #include "ne7ssh_session.h"
 #include "ne7ssh_string.h"
 #include "ne7ssh_transport.h"
-#include "crypt.h"
 
 /**
 @author Andrew Useckas

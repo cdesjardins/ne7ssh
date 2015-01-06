@@ -41,7 +41,7 @@ void ne7ssh_kex::constructLocalKex()
     _localKex.clear();
     _localKex.addChar(SSH2_MSG_KEXINIT);
 
-    ne7ssh::s_rng->randomize(random, 16);
+    ne7ssh_crypt::s_rng->randomize(random, 16);
 
     _localKex.addBytes(random, 16);
     _localKex.addString(ne7ssh::KEX_ALGORITHMS);

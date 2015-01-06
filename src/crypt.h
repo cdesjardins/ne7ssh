@@ -159,6 +159,8 @@ private:
     size_t max_keylength_of(const std::string& name);
 
 public:
+    static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;
+
     /**
      * ne7ssh_crypt class constructor.
      * @param _session Pointer to ne7ssh_session class.

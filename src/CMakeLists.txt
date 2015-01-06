@@ -24,9 +24,10 @@ set(net7ssh_LIB_SRCS
     ne7ssh_sftp.cpp
     ne7ssh_sftp.h
     ne7ssh_sftp_packet.cpp
-    ne7ssh_sftp_packet.h)
+    ne7ssh_sftp_packet.h
+    ne7ssh_rng.h)
 
-include_directories ( src ${HAVE_BOTAN} )
+include_directories ( ${HAVE_BOTAN} )
 add_definitions(-DNE7SSH_EXPORTS)
 add_library(ne7ssh STATIC ${net7ssh_LIB_SRCS})
 

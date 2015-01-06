@@ -17,7 +17,6 @@
 #include <signal.h>
 #include <time.h>
 #include <botan/init.h>
-#include <botan/auto_rng.h>
 #include "ne7ssh_string.h"
 #include "ne7ssh_connection.h"
 #include "ne7ssh.h"
@@ -29,8 +28,6 @@ using namespace std;
 const char* ne7ssh::SSH_VERSION = "SSH-2.0-NetSieben_1.3.2";
 std::shared_ptr<ne7ssh> ne7ssh::s_ne7sshInst;
 Ne7sshError* ne7ssh::s_errs = NULL;
-
-std::unique_ptr<RandomNumberGenerator> ne7ssh::s_rng = NULL;
 
 #ifdef _DEMO_BUILD
 const char* ne7ssh::MAC_ALGORITHMS = "none";
@@ -50,57 +47,6 @@ std::string ne7ssh::PREFERED_MAC;
 std::recursive_mutex ne7ssh::s_mutex;
 volatile bool ne7ssh::s_running = false;
 
-class Locking_AutoSeeded_RNG : public Botan::RandomNumberGenerator
-{
-public:
-    Locking_AutoSeeded_RNG()
-        : _rng(new Botan::AutoSeeded_RNG())
-    {
-    }
-
-    ~Locking_AutoSeeded_RNG()
-    {
-    }
-
-    void randomize(byte output[], size_t length)
-    {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-        _rng->randomize(output, length);
-    }
-
-    void clear() throw()
-    {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-        _rng->clear();
-    }
-
-    std::string name() const
-    {
-        return _rng->name();
-    }
-
-    void reseed(size_t bits_to_collect)
-    {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-        _rng->reseed(bits_to_collect);
-    }
-
-    void add_entropy_source(EntropySource* source)
-    {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-        _rng->add_entropy_source(source);
-    }
-
-    void add_entropy(const byte in[], size_t length)
-    {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
-        _rng->add_entropy(in, length);
-    }
-
-private:
-    std::recursive_mutex _mutex;
-    std::unique_ptr<Botan::RandomNumberGenerator> _rng;
-};
 
 std::shared_ptr<ne7ssh> ne7ssh::ne7sshCreate()
 {
@@ -117,7 +63,6 @@ ne7ssh::ne7ssh()
     s_errs = new Ne7sshError();
     _init.reset(new LibraryInitializer("thread_safe"));
     ne7ssh::s_running = true;
-    ne7ssh::s_rng.reset(new Locking_AutoSeeded_RNG());
 }
 
 ne7ssh::~ne7ssh()
@@ -148,7 +93,6 @@ ne7ssh::~ne7ssh()
         delete (s_errs);
         s_errs = 0;
     }
-    ne7ssh::s_rng.reset();
     _init.reset();
 }
 

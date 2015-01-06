@@ -22,8 +22,11 @@
 #include "crypt.h"
 #include "ne7ssh_session.h"
 #include "ne7ssh.h"
+#include "ne7ssh_rng.h"
 
 using namespace Botan;
+
+std::unique_ptr<RandomNumberGenerator> ne7ssh_crypt::s_rng;
 
 ne7ssh_crypt::ne7ssh_crypt(std::shared_ptr<ne7ssh_session> session)
     : _session(session),
@@ -39,6 +42,10 @@ ne7ssh_crypt::ne7ssh_crypt(std::shared_ptr<ne7ssh_session> session)
     _encryptBlock(0),
     _decryptBlock(0)
 {
+    if (s_rng == NULL)
+    {
+        s_rng.reset(new ne7ssh_rng());
+    }
 }
 
 ne7ssh_crypt::~ne7ssh_crypt()
@@ -516,7 +523,7 @@ bool ne7ssh_crypt::makeKexSecret(Botan::SecureVector<Botan::byte> &result, Botan
 
 bool ne7ssh_crypt::getDHGroup1Sha1Public(Botan::BigInt &publicKey)
 {
-    _privKexKey.reset(new DH_PrivateKey(*ne7ssh::s_rng, DL_Group("modp/ietf/1024")));
+    _privKexKey.reset(new DH_PrivateKey(*s_rng, DL_Group("modp/ietf/1024")));
     DH_PublicKey pubKexKey = *_privKexKey;
 
     publicKey = pubKexKey.get_y();
@@ -532,7 +539,7 @@ bool ne7ssh_crypt::getDHGroup1Sha1Public(Botan::BigInt &publicKey)
 
 bool ne7ssh_crypt::getDHGroup14Sha1Public(Botan::BigInt &publicKey)
 {
-    _privKexKey.reset(new DH_PrivateKey(*ne7ssh::s_rng, DL_Group("modp/ietf/2048")));
+    _privKexKey.reset(new DH_PrivateKey(*s_rng, DL_Group("modp/ietf/2048")));
     DH_PublicKey pubKexKey = *_privKexKey;
 
     publicKey = pubKexKey.get_y();

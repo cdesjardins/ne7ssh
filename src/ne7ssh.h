@@ -26,9 +26,6 @@
 #   error Unsupported Botan Version
 #endif
 
-# include <botan/auto_rng.h>
-# include <botan/rng.h>
-
 #include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
 
@@ -116,7 +113,6 @@ private:
     ne7ssh& operator=(const ne7ssh&);
 
 public:
-    static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;
     static const char* SSH_VERSION;
     static const char* KEX_ALGORITHMS;
     static const char* HOSTKEY_ALGORITHMS;
