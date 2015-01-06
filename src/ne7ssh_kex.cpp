@@ -71,11 +71,11 @@ void ne7ssh_kex::constructLocalKex()
     }
     if (_ciphers.size())
     {
-       _ciphers += tmpCiphers;
+        _ciphers += tmpCiphers;
     }
     else
     {
-       _ciphers = myCiphers.value();
+        _ciphers = myCiphers.value();
     }
 // _ciphers.append (&null_byte, 1);
 

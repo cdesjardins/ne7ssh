@@ -576,7 +576,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
                 carret = (const Botan::byte*) buffer + len - 1;
                 one = *str;
                 carretLen = 1;
-         
+
                 while (carretLen <= len)
                 {
                     if ((*carret == one) && (str_len <= carretLen))

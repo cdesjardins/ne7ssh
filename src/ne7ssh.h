@@ -70,7 +70,6 @@
 
 class ne7ssh_connection;
 
-
 /** definitions for Botan */
 namespace Botan
 {

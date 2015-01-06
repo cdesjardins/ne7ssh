@@ -30,7 +30,6 @@ const std::string ne7ssh_keys::s_footerDSA = "-----END DSA PRIVATE KEY-----\n";
 const std::string ne7ssh_keys::s_headerRSA = "-----BEGIN RSA PRIVATE KEY-----\n";
 const std::string ne7ssh_keys::s_footerRSA = "-----END RSA PRIVATE KEY-----\n";
 
-
 ne7ssh_keys::ne7ssh_keys() : keyAlgo(0)
 {
 }
@@ -313,13 +312,13 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
 #ifndef WIN32
     struct stat privKeyStatus;
 
-	if (lstat(privKeyFileName, &privKeyStatus) < 0)
+    if (lstat(privKeyFileName, &privKeyStatus) < 0)
     {
         ne7ssh::errors()->push(-1, "Cannot read file status: '%s'.", privKeyFileName);
         return false;
     }
 
-	if ((privKeyStatus.st_mode & (S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) != 0)
+    if ((privKeyStatus.st_mode & (S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) != 0)
     {
         ne7ssh::errors()->push(-1, "Private key file permissions are read/write by others: '%s'.", privKeyFileName);
         return false;

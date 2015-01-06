@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 
     std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
     uint16 size;
-    std::istringstream (argv[3]) >> size;
+    std::istringstream(argv[3]) >> size;
     // Generating DSA keys
     if (!ssh->generateKeyPair(argv[1], argv[2], "./privKeyFile", "./pubKeyFile", size))
     {

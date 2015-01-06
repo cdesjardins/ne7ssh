@@ -16,11 +16,10 @@
 #include <thread>
 void* thread_proc(void* initData);
 
-
 struct ssh_thrarg_t
 {
     std::shared_ptr<ne7ssh> ssh;
-    int     thrid;
+    int thrid;
 };
 
 void reportError(const std::string &tag, Ne7sshError* errors)
