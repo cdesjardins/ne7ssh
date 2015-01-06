@@ -18,16 +18,16 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    ne7ssh* _ssh = new ne7ssh();
+    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
     uint16 size;
     std::istringstream (argv[3]) >> size;
     // Generating DSA keys
-    if (!_ssh->generateKeyPair(argv[1], argv[2], "./privKeyFile", "./pubKeyFile", size))
+    if (!ssh->generateKeyPair(argv[1], argv[2], "./privKeyFile", "./pubKeyFile", size))
     {
         std::string errmsg;
         do
         {
-            errmsg = _ssh->errors()->pop();
+            errmsg = ssh->errors()->pop();
             if (errmsg.size() > 0)
             {
                 std::cerr << "Key gneration failed with last error: " << errmsg << std::endl;
@@ -35,7 +35,6 @@ int main(int argc, char* argv[])
         } while (errmsg.size() > 0);
     }
 
-    delete _ssh;
     return EXIT_SUCCESS;
 }
 

@@ -27,6 +27,7 @@ using namespace Botan;
 using namespace std;
 
 const char* ne7ssh::SSH_VERSION = "SSH-2.0-NetSieben_1.3.2";
+std::shared_ptr<ne7ssh> ne7ssh::s_ne7sshInst;
 Ne7sshError* ne7ssh::s_errs = NULL;
 
 std::unique_ptr<RandomNumberGenerator> ne7ssh::s_rng = NULL;
@@ -102,23 +103,24 @@ private:
     Botan::RandomNumberGenerator* rng;
 };
 
+std::shared_ptr<ne7ssh> ne7ssh::ne7sshCreate()
+{
+    if (s_ne7sshInst == NULL)
+    {
+        s_ne7sshInst.reset(new ne7ssh());
+        s_ne7sshInst->_selectThread = std::thread(&ne7ssh::selectThread, s_ne7sshInst);
+    }
+    return s_ne7sshInst;
+}
+
 ne7ssh::ne7ssh()
 {
     s_errs = new Ne7sshError();
-    if (ne7ssh::s_running)
-    {
-        s_errs->push(-1, "Cannot initialize more than more instance of ne7ssh class within the same application. Aborting.");
-        // FIXME: throw exception
-        return;
-    }
     _init.reset(new LibraryInitializer("thread_safe"));
     ne7ssh::s_running = true;
 
     ne7ssh::s_rng.reset(new Locking_AutoSeeded_RNG());
 
-    // FIXME: Dont start threads in constructors...
-    // and handle exceptions
-    _selectThread = std::thread(&ne7ssh::selectThread, this);
 }
 
 ne7ssh::~ne7ssh()
@@ -153,9 +155,8 @@ ne7ssh::~ne7ssh()
     _init.reset();
 }
 
-void ne7ssh::selectThread(void* initData)
+void ne7ssh::selectThread(std::shared_ptr<ne7ssh> ssh)
 {
-    ne7ssh* _ssh = (ne7ssh*) initData;
     uint32 i;
     int status = 0;
     fd_set rd;
@@ -171,11 +172,11 @@ void ne7ssh::selectThread(void* initData)
             fdIsSet = false;
             rfds = 0;
             std::unique_lock<std::recursive_mutex> lock(s_mutex);
-            for (i = 0; i < _ssh->_connections.size(); i++)
+            for (i = 0; i < ssh->_connections.size(); i++)
             {
-                if (_ssh->_connections[i]->isOpen() && _ssh->_connections[i]->data2Send() && !_ssh->_connections[i]->isSftpActive())
+                if (ssh->_connections[i]->isOpen() && ssh->_connections[i]->data2Send() && !ssh->_connections[i]->isSftpActive())
                 {
-                    _ssh->_connections[i]->sendData();
+                    ssh->_connections[i]->sendData();
                 }
             }
 
@@ -184,17 +185,17 @@ void ne7ssh::selectThread(void* initData)
 
             FD_ZERO(&rd);
 
-            for (i = 0; i < _ssh->_connections.size(); i++)
+            for (i = 0; i < ssh->_connections.size(); i++)
             {
-                cmdOrShell = (_ssh->_connections[i]->isRemoteShell() || _ssh->_connections[i]->isCmdRunning()) ? true : false;
-                if (_ssh->_connections[i]->isOpen() && cmdOrShell)
+                cmdOrShell = (ssh->_connections[i]->isRemoteShell() || ssh->_connections[i]->isCmdRunning()) ? true : false;
+                if (ssh->_connections[i]->isOpen() && cmdOrShell)
                 {
-                    rfds = rfds > _ssh->_connections[i]->getSocket() ? rfds : _ssh->_connections[i]->getSocket();
+                    rfds = rfds > ssh->_connections[i]->getSocket() ? rfds : ssh->_connections[i]->getSocket();
 #if defined(WIN32)
 #pragma warning(push)
 #pragma warning(disable : 4127)
 #endif
-                    FD_SET(_ssh->_connections[i]->getSocket(), &rd);
+                    FD_SET(ssh->_connections[i]->getSocket(), &rd);
 #if defined(WIN32)
 #pragma warning(pop)
 #endif
@@ -203,9 +204,9 @@ void ne7ssh::selectThread(void* initData)
                         fdIsSet = true;
                     }
                 }
-                else if ((_ssh->_connections[i]->isConnected() && _ssh->_connections[i]->isRemoteShell()) || _ssh->_connections[i]->isCmdClosed())
+                else if ((ssh->_connections[i]->isConnected() && ssh->_connections[i]->isRemoteShell()) || ssh->_connections[i]->isCmdClosed())
                 {
-                    _ssh->_connections.erase(_ssh->_connections.begin() + i);
+                    ssh->_connections.erase(ssh->_connections.begin() + i);
                 }
             }
         }
@@ -239,11 +240,11 @@ void ne7ssh::selectThread(void* initData)
         {
             std::unique_lock<std::recursive_mutex> lock(s_mutex);
 
-            for (i = 0; i < _ssh->_connections.size(); i++)
+            for (i = 0; i < ssh->_connections.size(); i++)
             {
-                if (_ssh->_connections[i]->isOpen() && FD_ISSET(_ssh->_connections[i]->getSocket(), &rd))
+                if (ssh->_connections[i]->isOpen() && FD_ISSET(ssh->_connections[i]->getSocket(), &rd))
                 {
-                    _ssh->_connections[i]->handleData();
+                    ssh->_connections[i]->handleData();
                 }
             }
         }

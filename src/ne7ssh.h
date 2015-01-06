@@ -87,6 +87,7 @@ class SSH_EXPORT ne7ssh
 private:
 
     static std::recursive_mutex s_mutex;
+    static std::shared_ptr<ne7ssh> s_ne7sshInst;
     std::unique_ptr<Botan::LibraryInitializer> _init;
     std::vector<std::shared_ptr<ne7ssh_connection> > _connections;
     volatile static bool s_running;
@@ -96,7 +97,7 @@ private:
      * <p> For Internal use only
      * @return Usually 0 when thread terminates
      */
-    static void selectThread(void*);
+    static void selectThread(std::shared_ptr<ne7ssh> _ssh);
 
     /**
      * Returns the number of active channel.
@@ -106,6 +107,11 @@ private:
     std::thread _selectThread;
 
     static Ne7sshError* s_errs;
+
+    /**
+    * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.
+    */
+    ne7ssh();
 
 public:
     static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;
@@ -118,10 +124,8 @@ public:
     static std::string PREFERED_CIPHER;
     static std::string PREFERED_MAC;
 
-    /**
-     * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.
-     */
-    ne7ssh();
+    static std::shared_ptr<ne7ssh> ne7sshCreate();
+
     /**
      * Destructor.
      */

@@ -19,7 +19,7 @@ void* thread_proc(void* initData);
 
 struct ssh_thrarg_t
 {
-    ne7ssh* ssh;
+    std::shared_ptr<ne7ssh> ssh;
     int     thrid;
 };
 
@@ -38,16 +38,16 @@ void reportError(const std::string &tag, Ne7sshError* errors)
 
 int main(/*int argc, char* argv[]*/)
 {
-    ne7ssh* _ssh = new ne7ssh();
+    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
 
     // Set SSH connection options.
-    _ssh->setOptions("aes128-cbc", "hmac-md5");
+    ssh->setOptions("aes128-cbc", "hmac-md5");
 
     ssh_thrarg_t args[4];
-    args[0].ssh = _ssh;
-    args[1].ssh = _ssh;
-    args[2].ssh = _ssh;
-    args[3].ssh = _ssh;
+    args[0].ssh = ssh;
+    args[1].ssh = ssh;
+    args[2].ssh = ssh;
+    args[3].ssh = ssh;
 
     args[0].thrid = 1;
     args[1].thrid = 2;
@@ -63,7 +63,6 @@ int main(/*int argc, char* argv[]*/)
     t2.join();
     t3.join();
     t4.join();
-    delete _ssh;
     return EXIT_SUCCESS;
 }
 
@@ -71,49 +70,49 @@ void* thread_proc(void* initData)
 {
     int channel1, i;
     const char* result;
-    ne7ssh* _ssh = ((ssh_thrarg_t*) initData)->ssh;
+    std::shared_ptr<ne7ssh> ssh = ((ssh_thrarg_t*) initData)->ssh;
     int thrid = ((ssh_thrarg_t*) initData)->thrid;
 
     for (i = 0; i < 50; i++)
     {
         // Initiate a connection.
-        channel1 = _ssh->connectWithPassword("remoteHost", 22, "remoteUsr", "password", true, 30);
+        channel1 = ssh->connectWithPassword("remoteHost", 22, "remoteUsr", "password", true, 30);
         if (channel1 < 0)
         {
-            reportError("Thread1. Connection", _ssh->errors());
+            reportError("Thread1. Connection", ssh->errors());
             continue;
         }
 
         // Wait for bash prompt, or die in 5 seconds.
-        if (!_ssh->waitFor(channel1, " $", 5))
+        if (!ssh->waitFor(channel1, " $", 5))
         {
-            reportError("Waiting for remote", _ssh->errors());
-            _ssh->close(channel1);
+            reportError("Waiting for remote", ssh->errors());
+            ssh->close(channel1);
             continue;
         }
 
         // Send "ls" command.
-        if (!_ssh->send("ls -al\n", channel1))
+        if (!ssh->send("ls -al\n", channel1))
         {
-            reportError("Send command", _ssh->errors());
-            _ssh->close(channel1);
+            reportError("Send command", ssh->errors());
+            ssh->close(channel1);
             continue;
         }
 
         // Wait for bash prompt, or die in 5 seconds
-        if (!_ssh->waitFor(channel1, " $", 5))
+        if (!ssh->waitFor(channel1, " $", 5))
         {
-            reportError("Waiting for remote site", _ssh->errors());
-            _ssh->close(channel1);
+            reportError("Waiting for remote site", ssh->errors());
+            ssh->close(channel1);
             continue;
         }
 
         // Fetch recieved data.
-        result = _ssh->read(channel1);
+        result = ssh->read(channel1);
         printf("Data Thread %i: %s\n\n", thrid, result);
 
         // Close the connection.
-        _ssh->send("exit\n", channel1);
+        ssh->send("exit\n", channel1);
     }
     return NULL;
 }

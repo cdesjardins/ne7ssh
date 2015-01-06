@@ -37,43 +37,38 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    ne7ssh* _ssh = new ne7ssh();
+    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
     // Set SSH connection options.
-    _ssh->setOptions("aes256-cbc", "hmac-md5");
+    ssh->setOptions("aes256-cbc", "hmac-md5");
 
     // Initiate connection without starting a remote shell.
-    channel1 = _ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0);
+    channel1 = ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0);
     if (channel1 < 0)
     {
-        reportError("Connection", _ssh->errors());
-        delete _ssh;
+        reportError("Connection", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // cat the remote file, works only on Unix systems. You may need to sepcifiy full path to cat.
     // Timeout after 100 seconds.
 
-    if (!_ssh->sendCmd("cat ~/test.bin", channel1, 100))
+    if (!ssh->sendCmd("cat ~/test.bin", channel1, 100))
     {
-        reportError("Command", _ssh->errors());
-        delete _ssh;
+        reportError("Command", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Determine the size of received file.
-    filesize = _ssh->getReceivedSize(channel1);
+    filesize = ssh->getReceivedSize(channel1);
 
     // Open a local file.
     std::fstream file("./test.bin", std::ios_base::out | std::ios_base::binary);
 
     // Write binary data from the receive buffer to the opened file.
-    file.write((char*)_ssh->readBinary(channel1), (size_t) filesize);
+    file.write((char*)ssh->readBinary(channel1), (size_t)filesize);
 
     // Close the files.
     file.close();
-
-    // Destroy the instance.
-    delete _ssh;
 
     return EXIT_SUCCESS;
 }

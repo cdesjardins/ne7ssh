@@ -37,25 +37,23 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    ne7ssh* _ssh = new ne7ssh();
+    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
 
     // Set SSH connection options.
-    _ssh->setOptions("aes256-cbc", "hmac-md5");
+    ssh->setOptions("aes256-cbc", "hmac-md5");
 
     // Initiate connection without starting a remote shell.
-    channel1 = _ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0, 20);
+    channel1 = ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0, 20);
     if (channel1 < 0)
     {
-        reportError("Connection", _ssh->errors());
-        delete _ssh;
+        reportError("Connection", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Initiate SFTP subsystem.
-    if (!_ssh->initSftp(_sftp, channel1))
+    if (!ssh->initSftp(_sftp, channel1))
     {
-        reportError("Command", _ssh->errors());
-        delete _ssh;
+        reportError("Command", ssh->errors());
         return EXIT_FAILURE;
     }
 
@@ -73,40 +71,35 @@ int main(int argc, char* argv[])
     testFi = fopen("test.bin", "wb+");
     if (!testFi)
     {
-        reportError("Open", _ssh->errors());
-        delete _ssh;
+        reportError("Open", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Download a file.
     if (!_sftp.get("test.bin", testFi))
     {
-        reportError("Get", _ssh->errors());
-        delete _ssh;
+        reportError("Get", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Change directory.
     if (!_sftp.cd("testing"))
     {
-        reportError("cd", _ssh->errors());
-        delete _ssh;
+        reportError("cd", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Upload the file.
     if (!_sftp.put(testFi, "test2.bin"))
     {
-        reportError("put", _ssh->errors());
-        delete _ssh;
+        reportError("put", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Create a new directory.
     if (!_sftp.mkdir("testing3"))
     {
-        reportError("mkdir", _ssh->errors());
-        delete _ssh;
+        reportError("mkdir", ssh->errors());
         return EXIT_FAILURE;
     }
 
@@ -114,8 +107,7 @@ int main(int argc, char* argv[])
     dirList = _sftp.ls(".", true);
     if (!dirList)
     {
-        reportError("ls", _ssh->errors());
-        delete _ssh;
+        reportError("ls", ssh->errors());
         return EXIT_FAILURE;
     }
     else
@@ -126,13 +118,9 @@ int main(int argc, char* argv[])
     // Change permisions on newly uploaded file.
     if (!_sftp.chmod("test2.bin", "755"))
     {
-        reportError("chmod", _ssh->errors());
-        delete _ssh;
+        reportError("chmod", ssh->errors());
         return EXIT_FAILURE;
     }
-
-    // Destroy the instance.
-    delete _ssh;
 
     return EXIT_SUCCESS;
 }

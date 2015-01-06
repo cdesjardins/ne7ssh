@@ -37,52 +37,48 @@ int main(int argc, char* argv[])
         std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <privatekeyfilename>" << std::endl;
         return EXIT_FAILURE;
     }
-    ne7ssh* _ssh = new ne7ssh();
+    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
     // Set SSH connection options.
-    _ssh->setOptions("aes128-cbc", "hmac-sha1");
+    ssh->setOptions("aes128-cbc", "hmac-sha1");
 
     // Initiate connection.
-    channel1 = _ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
+    channel1 = ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        reportError("Connection", _ssh->errors());
-        delete _ssh;
+        reportError("Connection", ssh->errors());
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds.
-    if (!_ssh->waitFor(channel1, "$", 5))
+    if (!ssh->waitFor(channel1, "$", 5))
     {
-        reportError("Wait for prompt", _ssh->errors());
-        _ssh->close(channel1);
-        delete _ssh;
+        reportError("Wait for prompt", ssh->errors());
+        ssh->close(channel1);
         return EXIT_FAILURE;
     }
 
     // Send "ls" command.
-    if (!_ssh->send("ls\n", channel1))
+    if (!ssh->send("ls\n", channel1))
     {
-        reportError("ls", _ssh->errors());
-        _ssh->close(channel1);
-        delete _ssh;
+        reportError("ls", ssh->errors());
+        ssh->close(channel1);
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds
-    if (!_ssh->waitFor(channel1, "$", 5))
+    if (!ssh->waitFor(channel1, "$", 5))
     {
-        reportError("Wait for ls", _ssh->errors());
-        _ssh->close(channel1);
-        delete _ssh;
+        reportError("Wait for ls", ssh->errors());
+        ssh->close(channel1);
         return EXIT_FAILURE;
     }
 
     // Fetch recieved data.
-    result = _ssh->read(channel1);
+    result = ssh->read(channel1);
 
     if (!result)
     {
-        reportError("Read", _ssh->errors());
+        reportError("Read", ssh->errors());
     }
     else
     {
@@ -90,10 +86,8 @@ int main(int argc, char* argv[])
     }
 
     // Terminate connection by sending "exit" command.
-    _ssh->send("exit\n", channel1);
+    ssh->send("exit\n", channel1);
 
-    // Destroy the instance.
-    delete _ssh;
     return EXIT_SUCCESS;
 }
 
