@@ -25,6 +25,10 @@
 #if BOTAN_VERSION_MAJOR > 1
 #   error Unsupported Botan Version
 #endif
+#if BOTAN_VERSION_MINOR > 10
+#   error Unsupported Botan Version
+#endif
+
 
 #include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
