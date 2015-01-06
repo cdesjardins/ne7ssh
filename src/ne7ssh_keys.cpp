@@ -41,11 +41,12 @@ ne7ssh_keys::~ne7ssh_keys()
 
 bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize)
 {
-    RSA_PrivateKey* rsaPrivKey;
+    std::unique_ptr<RSA_PrivateKey> rsaPrivKey;
     BigInt e, n, d, p, q;
     BigInt dmp1, dmq1, iqmp;
     ne7ssh_string pubKeyBlob;
-    FILE* privKeyFile, * pubKeyFile;
+    FILE* privKeyFile;
+    FILE* pubKeyFile;
     std::string privKeyEncoded;
     DER_Encoder encoder;
 
@@ -61,8 +62,7 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
         return false;
     }
 
-    rsaPrivKey = new RSA_PrivateKey(*ne7ssh::s_rng, keySize);
-    privKeyFile = fopen(privKeyFileName, "w");
+    rsaPrivKey.reset(new RSA_PrivateKey(*ne7ssh::s_rng, keySize));
 
     e = rsaPrivKey->get_e();
     n = rsaPrivKey->get_n();
@@ -89,7 +89,6 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
     if (!pubKeyFile)
     {
         ne7ssh::errors()->push(-1, "Cannot open file where public key is stored. Filename: %s", pubKeyFileName);
-        delete rsaPrivKey;
         return false;
     }
 
@@ -100,7 +99,7 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
         (!fwrite("\n", 1, 1, pubKeyFile)))
     {
         ne7ssh::errors()->push(-1, "I/O error while writting to file: %s.", pubKeyFileName);
-        delete rsaPrivKey;
+        fclose(pubKeyFile);
         return false;
     }
 
@@ -120,22 +119,19 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
         .end_cons()
         .get_contents(), "RSA PRIVATE KEY");
 
+    privKeyFile = fopen(privKeyFileName, "w");
     if (!privKeyFile)
     {
         ne7ssh::errors()->push(-1, "Cannot open file where the private key is stored. Filename: %s.", privKeyFileName);
-        delete rsaPrivKey;
         return false;
     }
 
     if (!fwrite(privKeyEncoded.c_str(), privKeyEncoded.length(), 1, privKeyFile))
     {
         ne7ssh::errors()->push(-1, "IO error while writting to file: %s.", privKeyFileName);
-        delete rsaPrivKey;
         return false;
     }
     fclose(privKeyFile);
-
-    delete rsaPrivKey;
     return true;
 }
 
@@ -144,7 +140,8 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     DER_Encoder encoder;
     BigInt p, q, g, y, x;
     ne7ssh_string pubKeyBlob;
-    FILE* privKeyFile, * pubKeyFile;
+    FILE* privKeyFile;
+    FILE* pubKeyFile;
     std::string privKeyEncoded;
 
     if (keySize != 1024)
