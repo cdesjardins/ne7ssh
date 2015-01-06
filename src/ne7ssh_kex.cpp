@@ -20,7 +20,8 @@
 
 using namespace Botan;
 
-ne7ssh_kex::ne7ssh_kex(std::shared_ptr<ne7ssh_session> session) : _session(session)
+ne7ssh_kex::ne7ssh_kex(std::shared_ptr<ne7ssh_session> session)
+    : _session(session)
 {
 }
 

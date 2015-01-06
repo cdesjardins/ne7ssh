@@ -49,7 +49,11 @@ WSockInitializer _wsock32_;
 
 using namespace Botan;
 
-ne7ssh_transport::ne7ssh_transport(std::shared_ptr<ne7ssh_session> session) : _seq(0), _rSeq(0), _session(session), _sock((SOCKET)-1)
+ne7ssh_transport::ne7ssh_transport(std::shared_ptr<ne7ssh_session> session)
+    : _seq(0),
+    _rSeq(0),
+    _session(session),
+    _sock((SOCKET)-1)
 {
 }
 

@@ -23,7 +23,13 @@ using namespace Botan;
 
 //uint32 ne7ssh_channel::channelCount = 0;
 
-ne7ssh_channel::ne7ssh_channel(std::shared_ptr<ne7ssh_session> session) : _eof(false), _closed(false), _cmdComplete(false), _shellSpawned(false), _session(session), _channelOpened(false)
+ne7ssh_channel::ne7ssh_channel(std::shared_ptr<ne7ssh_session> session)
+    : _eof(false),
+    _closed(false),
+    _cmdComplete(false),
+    _shellSpawned(false),
+    _session(session),
+    _channelOpened(false)
 {
 }
 

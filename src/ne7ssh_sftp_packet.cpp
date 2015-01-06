@@ -19,15 +19,21 @@
 
 using namespace Botan;
 
-Ne7sshSftpPacket::Ne7sshSftpPacket () : ne7ssh_string(), _channel(-1)
+Ne7sshSftpPacket::Ne7sshSftpPacket ()
+    : ne7ssh_string(),
+    _channel(-1)
 {
 }
 
-Ne7sshSftpPacket::Ne7sshSftpPacket (int channel) : ne7ssh_string(), _channel(channel)
+Ne7sshSftpPacket::Ne7sshSftpPacket (int channel)
+    : ne7ssh_string(),
+    _channel(channel)
 {
 }
 
-Ne7sshSftpPacket::Ne7sshSftpPacket (Botan::SecureVector<Botan::byte>& var, uint32 position) : ne7ssh_string(var, position), _channel(-1)
+Ne7sshSftpPacket::Ne7sshSftpPacket (Botan::SecureVector<Botan::byte>& var, uint32 position)
+    : ne7ssh_string(var, position),
+    _channel(-1)
 {
 }
 

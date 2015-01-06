@@ -29,12 +29,14 @@ ne7ssh_string::ne7ssh_string() : _currentPart(0)
 {
 }
 
-ne7ssh_string::ne7ssh_string(Botan::SecureVector<Botan::byte>& var, uint32 position) : _currentPart(0)
+ne7ssh_string::ne7ssh_string(Botan::SecureVector<Botan::byte>& var, uint32 position)
+    : _currentPart(0)
 {
     _buffer = SecureVector<Botan::byte>((var.begin() + position), (var.size() - position));
 }
 
-ne7ssh_string::ne7ssh_string(const char* var, uint32 position) : _currentPart(0)
+ne7ssh_string::ne7ssh_string(const char* var, uint32 position)
+    : _currentPart(0)
 {
     char null_char = 0x0;
     _buffer = SecureVector<Botan::byte>((Botan::byte*)(var + position), (u32bit) (strlen(var) - position));

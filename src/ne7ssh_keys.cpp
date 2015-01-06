@@ -30,7 +30,8 @@ const std::string ne7ssh_keys::s_footerDSA = "-----END DSA PRIVATE KEY-----\n";
 const std::string ne7ssh_keys::s_headerRSA = "-----BEGIN RSA PRIVATE KEY-----\n";
 const std::string ne7ssh_keys::s_footerRSA = "-----END RSA PRIVATE KEY-----\n";
 
-ne7ssh_keys::ne7ssh_keys() : keyAlgo(0)
+ne7ssh_keys::ne7ssh_keys()
+    : keyAlgo(0)
 {
 }
 
