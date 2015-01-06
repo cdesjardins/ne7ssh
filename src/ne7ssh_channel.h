@@ -28,15 +28,15 @@ class ne7ssh_session;
 class ne7ssh_channel
 {
 private:
-    bool eof, closed;
-    bool cmdComplete;
-    bool shellSpawned;
+    bool _eof;
+    bool _closed;
+    bool _cmdComplete;
+    bool _shellSpawned;
 
-//    static uint32 channelCount;
-    ne7ssh_session* session;
-    ne7ssh_string inBuffer;
-    ne7ssh_string outBuffer;
-    ne7ssh_string delayedBuffer;
+    ne7ssh_session* _session;
+    ne7ssh_string _inBuffer;
+    ne7ssh_string _outBuffer;
+    ne7ssh_string _delayedBuffer;
 
     /**
      * This function is used to handle the 'CHANNEL_OPEN_CONFIRMATION' packet.
@@ -97,9 +97,10 @@ private:
     bool handleDisconnect(Botan::SecureVector<Botan::byte>& packet);
 
 protected:
-    uint32 windowRecv, windowSend;
+    uint32 _windowRecv;
+    uint32 _windowSend;
 
-    bool channelOpened;
+    bool _channelOpened;
 
     /**
      * Request adjustment of the send window size on the remote end, so we can receive more data.
@@ -111,7 +112,7 @@ public:
      * ne7ssh_channel class consturctor.
      * @param _session Pointer to ne7ssh_session.
      */
-    ne7ssh_channel(ne7ssh_session* _session);
+    ne7ssh_channel(ne7ssh_session* session);
 
     /**
      * ne7ssh_channel class destructor.
@@ -166,7 +167,7 @@ public:
      */
     bool data2Send()
     {
-        if (outBuffer.length() || delayedBuffer.length())
+        if (_outBuffer.length() || _delayedBuffer.length())
         {
             return true;
         }
@@ -182,7 +183,7 @@ public:
      */
     bool isOpen()
     {
-        return channelOpened;
+        return _channelOpened;
     }
 
     /**
@@ -203,7 +204,7 @@ public:
      */
     Botan::SecureVector<Botan::byte>& getReceived()
     {
-        return inBuffer.value();
+        return _inBuffer.value();
     }
 
     /**
@@ -212,7 +213,7 @@ public:
     */
     bool getCmdComplete()
     {
-        return cmdComplete;
+        return _cmdComplete;
     }
 
     /**
@@ -221,7 +222,7 @@ public:
     */
     bool isRemoteShell()
     {
-        return shellSpawned;
+        return _shellSpawned;
     }
 
     /**
@@ -237,7 +238,7 @@ public:
     */
     uint32 getRecvWindow()
     {
-        return windowRecv;
+        return _windowRecv;
     }
 
     /**
@@ -246,7 +247,7 @@ public:
     */
     uint32 getSendWindow()
     {
-        return windowSend;
+        return _windowSend;
     }
 };
 

@@ -16,6 +16,7 @@
 
 #ifndef NE7SSH_KEYS_H
 #define NE7SSH_KEYS_H
+#include <memory>
 #include <botan/pubkey.h>
 #include <botan/pem.h>
 #include <botan/dsa.h>
@@ -35,14 +36,14 @@
 class ne7ssh_keys
 {
 private:
-    Botan::DSA_PrivateKey* dsaPrivateKey;
-    Botan::RSA_PrivateKey* rsaPrivateKey;
-    ne7ssh_string publicKeyBlob;
-    Botan::SecureVector<Botan::byte> signature;
-    const static std::string headerDSA;
-    const static std::string footerDSA;
-    const static std::string headerRSA;
-    const static std::string footerRSA;
+    std::shared_ptr<Botan::DSA_PrivateKey> _dsaPrivateKey;
+    std::shared_ptr<Botan::RSA_PrivateKey> _rsaPrivateKey;
+    ne7ssh_string _publicKeyBlob;
+    Botan::SecureVector<Botan::byte> _signature;
+    const static std::string s_headerDSA;
+    const static std::string s_footerDSA;
+    const static std::string s_headerRSA;
+    const static std::string s_footerRSA;
 
     uint8 keyAlgo;
 

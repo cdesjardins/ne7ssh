@@ -29,14 +29,15 @@
 class ne7ssh_kex
 {
 private:
-    ne7ssh_session* session;
-    ne7ssh_string localKex;
-    ne7ssh_string remotKex;
-    ne7ssh_string hostKey;
-    ne7ssh_string e;
-    ne7ssh_string f;
-    ne7ssh_string k;
-    Botan::SecureVector<Botan::byte> Ciphers, Hmacs;
+    ne7ssh_session* _session;
+    ne7ssh_string _localKex;
+    ne7ssh_string _remotKex;
+    ne7ssh_string _hostKey;
+    ne7ssh_string _e;
+    ne7ssh_string _f;
+    ne7ssh_string _k;
+    Botan::SecureVector<Botan::byte> _ciphers;
+    Botan::SecureVector<Botan::byte> _hmacs;
 
     /**
      * Constructs local 'KEX_INIT' payload
@@ -54,7 +55,7 @@ public:
      * ne7ssh_kex class constructor.
      * @param _session Pointer to ne7ssh_session variable.
      */
-    ne7ssh_kex(ne7ssh_session* _session);
+    ne7ssh_kex(ne7ssh_session* session);
 
     /**
      * ne7ssh_kex class destructor.

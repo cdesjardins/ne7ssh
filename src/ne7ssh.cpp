@@ -118,9 +118,7 @@ ne7ssh::ne7ssh()
     s_errs = new Ne7sshError();
     _init.reset(new LibraryInitializer("thread_safe"));
     ne7ssh::s_running = true;
-
     ne7ssh::s_rng.reset(new Locking_AutoSeeded_RNG());
-
 }
 
 ne7ssh::~ne7ssh()

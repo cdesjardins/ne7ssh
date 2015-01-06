@@ -16,7 +16,7 @@
 
 #include "ne7ssh_session.h"
 
-ne7ssh_session::ne7ssh_session() : sendChannel(0), receiveChannel(0), channelID(-1), transport(0)
+ne7ssh_session::ne7ssh_session() : _sendChannel(0), _receiveChannel(0), _channelID(-1), _transport(0)
 {
 }
 

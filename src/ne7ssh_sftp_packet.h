@@ -26,7 +26,7 @@
 class Ne7sshSftpPacket : public ne7ssh_string
 {
 private:
-    int channel;
+    int _channel;
 
 public:
     /**

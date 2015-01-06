@@ -30,7 +30,7 @@ private:
     uint32 _currentPart;
 
 protected:
-    Botan::SecureVector<Botan::byte> buffer;
+    Botan::SecureVector<Botan::byte> _buffer;
 
 public:
     /**
@@ -64,7 +64,7 @@ public:
      */
     void clear()
     {
-        buffer.clear();
+        _buffer.clear();
     }
 
     /**
@@ -130,7 +130,7 @@ public:
      */
     virtual Botan::SecureVector<Botan::byte> &value()
     {
-        return buffer;
+        return _buffer;
     }
 
     /**
@@ -139,7 +139,7 @@ public:
      */
     uint32 length()
     {
-        return buffer.size();
+        return _buffer.size();
     }
 
     /**

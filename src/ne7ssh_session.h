@@ -27,17 +27,17 @@
 class ne7ssh_session
 {
 private:
-    Botan::SecureVector<Botan::byte> localVersion;
-    Botan::SecureVector<Botan::byte> remoteVersion;
-    Botan::SecureVector<Botan::byte> sessionID;
-    uint32 sendChannel;
-    uint32 receiveChannel;
-    uint32 maxPacket;
-    int32 channelID;
+    Botan::SecureVector<Botan::byte> _localVersion;
+    Botan::SecureVector<Botan::byte> _remoteVersion;
+    Botan::SecureVector<Botan::byte> _sessionID;
+    uint32 _sendChannel;
+    uint32 _receiveChannel;
+    uint32 _maxPacket;
+    int32 _channelID;
 
 public:
-    ne7ssh_transport* transport;
-    ne7ssh_crypt* crypto;
+    ne7ssh_transport* _transport;
+    ne7ssh_crypt* _crypto;
 
     /**
      * ne7ssh_session class constructor.
@@ -55,7 +55,7 @@ public:
      */
     void setLocalVersion(Botan::SecureVector<Botan::byte>& version)
     {
-        localVersion = version;
+        _localVersion = version;
     }
 
     /**
@@ -64,7 +64,7 @@ public:
      */
     Botan::SecureVector<Botan::byte> &getLocalVersion()
     {
-        return localVersion;
+        return _localVersion;
     }
 
     /**
@@ -73,7 +73,7 @@ public:
      */
     void setRemoteVersion(Botan::SecureVector<Botan::byte>& version)
     {
-        remoteVersion = version;
+        _remoteVersion = version;
     }
 
     /**
@@ -82,7 +82,7 @@ public:
      */
     Botan::SecureVector<Botan::byte> &getRemoteVersion()
     {
-        return remoteVersion;
+        return _remoteVersion;
     }
 
     /**
@@ -91,7 +91,7 @@ public:
      */
     void setSessionID(Botan::SecureVector<Botan::byte>& session)
     {
-        sessionID = session;
+        _sessionID = session;
     }
 
     /**
@@ -100,7 +100,7 @@ public:
      */
     Botan::SecureVector<Botan::byte> &getSessionID()
     {
-        return sessionID;
+        return _sessionID;
     }
 
     /**
@@ -109,7 +109,7 @@ public:
      */
     void setSendChannel(uint32 channel)
     {
-        sendChannel = channel;
+        _sendChannel = channel;
     }
 
     /**
@@ -118,7 +118,7 @@ public:
      */
     uint32 getSendChannel() const
     {
-        return sendChannel;
+        return _sendChannel;
     }
 
     /**
@@ -127,7 +127,7 @@ public:
      */
     void setReceiveChannel(uint32 channel)
     {
-        receiveChannel = channel;
+        _receiveChannel = channel;
     }
 
     /**
@@ -136,7 +136,7 @@ public:
      */
     uint32 getReceiveChannel()
     {
-        return receiveChannel;
+        return _receiveChannel;
     }
 
     /**
@@ -145,7 +145,7 @@ public:
      */
     void setMaxPacket(uint32 size)
     {
-        maxPacket = size;
+        _maxPacket = size;
     }
 
     /**
@@ -154,7 +154,7 @@ public:
      */
     uint32 getMaxPacket()
     {
-        return maxPacket;
+        return _maxPacket;
     }
 
     /**
@@ -163,7 +163,7 @@ public:
      */
     void setSshChannel(int32 channel)
     {
-        channelID = channel;
+        _channelID = channel;
     }
 
     /**
@@ -172,7 +172,7 @@ public:
      */
     int32 getSshChannel()
     {
-        return channelID;
+        return _channelID;
     }
 };
 

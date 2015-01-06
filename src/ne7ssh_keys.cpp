@@ -25,26 +25,18 @@
 using namespace std;
 using namespace Botan;
 
-const std::string ne7ssh_keys::headerDSA = "-----BEGIN DSA PRIVATE KEY-----\n";
-const std::string ne7ssh_keys::footerDSA = "-----END DSA PRIVATE KEY-----\n";
-const std::string ne7ssh_keys::headerRSA = "-----BEGIN RSA PRIVATE KEY-----\n";
-const std::string ne7ssh_keys::footerRSA = "-----END RSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::s_headerDSA = "-----BEGIN DSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::s_footerDSA = "-----END DSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::s_headerRSA = "-----BEGIN RSA PRIVATE KEY-----\n";
+const std::string ne7ssh_keys::s_footerRSA = "-----END RSA PRIVATE KEY-----\n";
 
 
-ne7ssh_keys::ne7ssh_keys() : dsaPrivateKey(0), rsaPrivateKey(0), keyAlgo(0)
+ne7ssh_keys::ne7ssh_keys() : keyAlgo(0)
 {
 }
 
 ne7ssh_keys::~ne7ssh_keys()
 {
-    if (dsaPrivateKey)
-    {
-        delete dsaPrivateKey;
-    }
-    if (rsaPrivateKey)
-    {
-        delete rsaPrivateKey;
-    }
 }
 
 bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize)
@@ -233,20 +225,20 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
 
 SecureVector<Botan::byte>& ne7ssh_keys::generateSignature(Botan::SecureVector<Botan::byte>& sessionID, Botan::SecureVector<Botan::byte>& signingData)
 {
-    this->signature.clear();
+    this->_signature.clear();
     switch (this->keyAlgo)
     {
         case DSA:
-            this->signature = generateDSASignature(sessionID, signingData);
-            return (signature);
+            this->_signature = generateDSASignature(sessionID, signingData);
+            return (_signature);
 
         case RSA:
-            this->signature = generateRSASignature(sessionID, signingData);
-            return (signature);
+            this->_signature = generateRSASignature(sessionID, signingData);
+            return (_signature);
 
         default:
-            this->signature.clear();
-            return (signature);
+            this->_signature.clear();
+            return (_signature);
     }
 }
 
@@ -257,13 +249,13 @@ SecureVector<Botan::byte> ne7ssh_keys::generateDSASignature(Botan::SecureVector<
 
     sigData.addVectorField(sessionID);
     sigData.addVector(signingData);
-    if (!dsaPrivateKey)
+    if (!_dsaPrivateKey)
     {
         ne7ssh::errors()->push(-1, "Private DSA key not initialized.");
         return sig.value();
     }
 
-    PK_Signer* DSASigner = new PK_Signer(*dsaPrivateKey, "EMSA1(SHA-1)");
+    PK_Signer* DSASigner = new PK_Signer(*_dsaPrivateKey, "EMSA1(SHA-1)");
     sigRaw = DSASigner->sign_message(sigData.value(), *ne7ssh::s_rng);
 
     if (!sigRaw.size())
@@ -293,13 +285,13 @@ SecureVector<Botan::byte> ne7ssh_keys::generateRSASignature(Botan::SecureVector<
 
     sigData.addVectorField(sessionID);
     sigData.addVector(signingData);
-    if (!rsaPrivateKey)
+    if (!_rsaPrivateKey)
     {
         ne7ssh::errors()->push(-1, "Private RSA key not initialized.");
         return sig.value();
     }
 
-    PK_Signer* RSASigner = new PK_Signer(*rsaPrivateKey, "EMSA3(SHA-1)");
+    PK_Signer* RSASigner = new PK_Signer(*_rsaPrivateKey, "EMSA3(SHA-1)");
     sigRaw = RSASigner->sign_message(sigData.value(), *ne7ssh::s_rng);
     if (!sigRaw.size())
     {
@@ -343,11 +335,11 @@ bool ne7ssh_keys::getKeyPairFromFile(const char* privKeyFileName)
     // Find all CR-LF, and remove the CR
     buffer.erase(std::remove(buffer.begin(), buffer.end(), '\r'), buffer.end());
 
-    if ((buffer.find(headerRSA) == 0) && (buffer.find(footerRSA) == (buffer.length() - footerRSA.length())))
+    if ((buffer.find(s_headerRSA) == 0) && (buffer.find(s_footerRSA) == (buffer.length() - s_footerRSA.length())))
     {
         this->keyAlgo = ne7ssh_keys::RSA;
     }
-    else if ((buffer.find(headerDSA) == 0) && (buffer.find(footerDSA) == (buffer.length() - footerDSA.length())))
+    else if ((buffer.find(s_headerDSA) == 0) && (buffer.find(s_footerDSA) == (buffer.length() - s_footerDSA.length())))
     {
         this->keyAlgo = ne7ssh_keys::DSA;
     }
@@ -386,9 +378,9 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
     char* start;
     size_t version;
 
-    start = buffer + headerDSA.length();
+    start = buffer + s_headerDSA.length();
     Pipe base64dec(new Base64_Decoder);
-    base64dec.process_msg((Botan::byte*)start, size - footerDSA.length() - headerDSA.length());
+    base64dec.process_msg((Botan::byte*)start, size - s_footerDSA.length() - s_headerDSA.length());
     keyDataRaw = base64dec.read_all();
 
     BER_Decoder decoder(keyDataRaw);
@@ -419,13 +411,13 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
 
     DL_Group dsaGroup(p, q, g);
 
-    dsaPrivateKey = new DSA_PrivateKey(*ne7ssh::s_rng, dsaGroup, x);
-    publicKeyBlob.clear();
-    publicKeyBlob.addString("ssh-dss");
-    publicKeyBlob.addBigInt(p);
-    publicKeyBlob.addBigInt(q);
-    publicKeyBlob.addBigInt(g);
-    publicKeyBlob.addBigInt(y);
+    _dsaPrivateKey.reset(new DSA_PrivateKey(*ne7ssh::s_rng, dsaGroup, x));
+    _publicKeyBlob.clear();
+    _publicKeyBlob.addString("ssh-dss");
+    _publicKeyBlob.addBigInt(p);
+    _publicKeyBlob.addBigInt(q);
+    _publicKeyBlob.addBigInt(g);
+    _publicKeyBlob.addBigInt(y);
 
     return true;
 }
@@ -437,9 +429,9 @@ bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
     char* start;
     size_t version;
 
-    start = buffer + headerRSA.length();
+    start = buffer + s_headerRSA.length();
     Pipe base64dec(new Base64_Decoder);
-    base64dec.process_msg((Botan::byte*)start, size - footerRSA.length() - headerRSA.length());
+    base64dec.process_msg((Botan::byte*)start, size - s_footerRSA.length() - s_headerRSA.length());
     keyDataRaw = base64dec.read_all();
 
     BER_Decoder decoder(keyDataRaw);
@@ -468,17 +460,17 @@ bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
         return false;
     }
 
-    rsaPrivateKey = new RSA_PrivateKey(*ne7ssh::s_rng, p, q, e, d, n);
-    publicKeyBlob.clear();
-    publicKeyBlob.addString("ssh-rsa");
-    publicKeyBlob.addBigInt(e);
-    publicKeyBlob.addBigInt(n);
+    _rsaPrivateKey.reset(new RSA_PrivateKey(*ne7ssh::s_rng, p, q, e, d, n));
+    _publicKeyBlob.clear();
+    _publicKeyBlob.addString("ssh-rsa");
+    _publicKeyBlob.addBigInt(e);
+    _publicKeyBlob.addBigInt(n);
 
     return true;
 }
 
 SecureVector<Botan::byte>& ne7ssh_keys::getPublicKeyBlob()
 {
-    return publicKeyBlob.value();
+    return _publicKeyBlob.value();
 }
 

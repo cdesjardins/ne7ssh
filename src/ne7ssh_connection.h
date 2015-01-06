@@ -32,18 +32,18 @@
 class ne7ssh_connection
 {
 private:
-    SOCKET sock;
-    int thisChannel;
-    ne7ssh_crypt* crypto;
-    ne7ssh_transport* transport;
-    ne7ssh_session* session;
-    ne7ssh_channel* channel;
-    Ne7sshSftp* sftp;
+    SOCKET _sock;
+    int _thisChannel;
+    ne7ssh_crypt* _crypto;
+    ne7ssh_transport* _transport;
+    ne7ssh_session* _session;
+    ne7ssh_channel* _channel;
+    Ne7sshSftp* _sftp;
 
     std::recursive_mutex _mut;
-    bool connected;
-    bool cmdRunning;
-    bool cmdClosed;
+    bool _connected;
+    bool _cmdRunning;
+    bool _cmdClosed;
 
     /**
      * Checks if remote side is returning a correctly formated SSH version string, and makes sure that version 2 of SSH protocol is supported by the remote side.
@@ -125,7 +125,7 @@ public:
      */
     SOCKET getSocket()
     {
-        return sock;
+        return _sock;
     }
 
     /**
@@ -144,7 +144,7 @@ public:
      */
     void setChannelNo(int channelID)
     {
-        thisChannel = channelID;
+        _thisChannel = channelID;
     }
 
     /**
@@ -153,7 +153,7 @@ public:
      */
     int getChannelNo()
     {
-        return thisChannel;
+        return _thisChannel;
     }
 
     /**
@@ -162,7 +162,7 @@ public:
      */
     bool data2Send()
     {
-        return channel->data2Send();
+        return _channel->data2Send();
     }
 
     /**
@@ -171,7 +171,7 @@ public:
      */
     void sendData()
     {
-        channel->sendAll();
+        _channel->sendAll();
     }
 
     /**
@@ -194,7 +194,7 @@ public:
      */
     bool isOpen()
     {
-        return channel->isOpen();
+        return _channel->isOpen();
     }
 
     /**
@@ -203,7 +203,7 @@ public:
      */
     bool isConnected()
     {
-        return connected;
+        return _connected;
     }
 
     /**
@@ -212,7 +212,7 @@ public:
      */
     Botan::SecureVector<Botan::byte>& getReceived()
     {
-        return channel->getReceived();
+        return _channel->getReceived();
     }
 
     /**
@@ -221,7 +221,7 @@ public:
     */
     bool getCmdComplete()
     {
-        return channel->getCmdComplete();
+        return _channel->getCmdComplete();
     }
 
     /**
@@ -230,7 +230,7 @@ public:
     */
     bool isCmdClosed()
     {
-        return cmdClosed;
+        return _cmdClosed;
     }
 
     /**
@@ -239,7 +239,7 @@ public:
     */
     bool isRemoteShell()
     {
-        return channel->isRemoteShell();
+        return _channel->isRemoteShell();
     }
 
     /**
@@ -248,7 +248,7 @@ public:
     */
     bool isCmdRunning()
     {
-        return cmdRunning;
+        return _cmdRunning;
     }
 
     /**

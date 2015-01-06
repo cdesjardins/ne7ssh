@@ -20,7 +20,7 @@
 
 using namespace Botan;
 
-ne7ssh_kex::ne7ssh_kex(ne7ssh_session* _session) : session(_session)
+ne7ssh_kex::ne7ssh_kex(ne7ssh_session* session) : _session(session)
 {
 }
 
@@ -37,14 +37,14 @@ void ne7ssh_kex::constructLocalKex()
     char* cipher, * hmac;
     size_t len;
 
-    localKex.clear();
-    localKex.addChar(SSH2_MSG_KEXINIT);
+    _localKex.clear();
+    _localKex.addChar(SSH2_MSG_KEXINIT);
 
     ne7ssh::s_rng->randomize(random, 16);
 
-    localKex.addBytes(random, 16);
-    localKex.addString(ne7ssh::KEX_ALGORITHMS);
-    localKex.addString(ne7ssh::HOSTKEY_ALGORITHMS);
+    _localKex.addBytes(random, 16);
+    _localKex.addString(ne7ssh::KEX_ALGORITHMS);
+    _localKex.addString(ne7ssh::HOSTKEY_ALGORITHMS);
 
     if (ne7ssh::PREFERED_CIPHER.size() > 0)
     {
@@ -59,7 +59,7 @@ void ne7ssh_kex::constructLocalKex()
                 len = strlen(cipher);
                 if (ne7ssh::PREFERED_CIPHER.compare(cipher) == 0)
                 {
-                    Ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
+                    _ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
                 }
                 else
                 {
@@ -69,15 +69,15 @@ void ne7ssh_kex::constructLocalKex()
             }
         } while (cipher != NULL);
     }
-    if (Ciphers.size())
+    if (_ciphers.size())
     {
-        Ciphers += tmpCiphers;
+       _ciphers += tmpCiphers;
     }
     else
     {
-        Ciphers = myCiphers.value();
+       _ciphers = myCiphers.value();
     }
-//  Ciphers.append (&null_byte, 1);
+// _ciphers.append (&null_byte, 1);
 
     if (ne7ssh::PREFERED_MAC.size() > 0)
     {
@@ -92,7 +92,7 @@ void ne7ssh_kex::constructLocalKex()
                 len = strlen(hmac);
                 if (ne7ssh::PREFERED_MAC.compare(hmac) == 0)
                 {
-                    Hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
+                    _hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
                 }
                 else
                 {
@@ -102,48 +102,48 @@ void ne7ssh_kex::constructLocalKex()
             }
         } while (hmac != NULL);
     }
-    if (Hmacs.size())
+    if (_hmacs.size())
     {
-        Hmacs += SecureVector<Botan::byte>(tmpMacs);
+        _hmacs += SecureVector<Botan::byte>(tmpMacs);
     }
     else
     {
-        Hmacs = myMacs.value();
+        _hmacs = myMacs.value();
     }
-//  Hmacs.append (&null_byte, 1);
+//  _hmacs.append (&null_byte, 1);
 
-    localKex.addVectorField(Ciphers);
-    localKex.addVectorField(Ciphers);
-    localKex.addVectorField(Hmacs);
-    localKex.addVectorField(Hmacs);
-    localKex.addString(ne7ssh::COMPRESSION_ALGORITHMS);
-    localKex.addString(ne7ssh::COMPRESSION_ALGORITHMS);
-    localKex.addInt(0);
-    localKex.addInt(0);
-    localKex.addChar('\0');
-    localKex.addInt(0);
+    _localKex.addVectorField(_ciphers);
+    _localKex.addVectorField(_ciphers);
+    _localKex.addVectorField(_hmacs);
+    _localKex.addVectorField(_hmacs);
+    _localKex.addString(ne7ssh::COMPRESSION_ALGORITHMS);
+    _localKex.addString(ne7ssh::COMPRESSION_ALGORITHMS);
+    _localKex.addInt(0);
+    _localKex.addInt(0);
+    _localKex.addChar('\0');
+    _localKex.addInt(0);
 }
 
 bool ne7ssh_kex::sendInit()
 {
     ne7ssh_transport* _transport;
 
-    if (!session->transport)
+    if (!_session->_transport)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No transport. Cannot initialize key exchange.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No transport. Cannot initialize key exchange.");
         return false;
     }
-    _transport = session->transport;
+    _transport = _session->_transport;
 
     constructLocalKex();
 
-    if (!_transport->sendPacket(localKex.value()))
+    if (!_transport->sendPacket(_localKex.value()))
     {
         return false;
     }
     if (!_transport->waitForPacket(SSH2_MSG_KEXINIT))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Timeout while waiting for key exchange init reply");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Timeout while waiting for key exchange init reply");
         return false;
     }
 
@@ -152,8 +152,8 @@ bool ne7ssh_kex::sendInit()
 
 bool ne7ssh_kex::handleInit()
 {
-    ne7ssh_transport* _transport = session->transport;
-    ne7ssh_crypt* _crypto = session->crypto;
+    ne7ssh_transport* _transport = _session->_transport;
+    ne7ssh_crypt* _crypto = _session->_crypto;
     SecureVector<Botan::byte> packet;
     uint32 padLen = _transport->getPacket(packet);
     ne7ssh_string remoteKex(packet, 17);
@@ -164,8 +164,8 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    remotKex.clear();
-    remotKex.addBytes(packet.begin(), packet.size() - padLen - 1);
+    _remotKex.clear();
+    _remotKex.addBytes(packet.begin(), packet.size() - padLen - 1);
 
     if (!remoteKex.getString(algos))
     {
@@ -173,7 +173,7 @@ bool ne7ssh_kex::handleInit()
     }
     if (!_crypto->agree(agreed, ne7ssh::KEX_ALGORITHMS, algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible key exchange algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible key exchange algorithms.");
         return false;
     }
     if (!_crypto->negotiatedKex(agreed))
@@ -187,7 +187,7 @@ bool ne7ssh_kex::handleInit()
     }
     if (!_crypto->agree(agreed, ne7ssh::HOSTKEY_ALGORITHMS, algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible Hostkey algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible Hostkey algorithms.");
         return false;
     }
     if (!_crypto->negotiatedHostkey(agreed))
@@ -199,9 +199,9 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!_crypto->agree(agreed, (char*)Ciphers.begin(), algos))
+    if (!_crypto->agree(agreed, (char*)_ciphers.begin(), algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible cryptographic algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible cryptographic algorithms.");
         return false;
     }
     if (!_crypto->negotiatedCryptoC2s(agreed))
@@ -213,9 +213,9 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!_crypto->agree(agreed, (char*)Ciphers.begin(), algos))
+    if (!_crypto->agree(agreed, (char*)_ciphers.begin(), algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible cryptographic algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible cryptographic algorithms.");
         return false;
     }
     if (!_crypto->negotiatedCryptoS2c(agreed))
@@ -227,9 +227,9 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!_crypto->agree(agreed, (char*)Hmacs.begin(), algos))
+    if (!_crypto->agree(agreed, (char*)_hmacs.begin(), algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible HMAC algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible HMAC algorithms.");
         return false;
     }
     if (!_crypto->negotiatedMacC2s(agreed))
@@ -241,9 +241,9 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!_crypto->agree(agreed, (char*)Hmacs.begin(), algos))
+    if (!_crypto->agree(agreed, (char*)_hmacs.begin(), algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible HMAC algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible HMAC algorithms.");
         return false;
     }
     if (!_crypto->negotiatedMacS2c(agreed))
@@ -257,7 +257,7 @@ bool ne7ssh_kex::handleInit()
     }
     if (!_crypto->agree(agreed, ne7ssh::COMPRESSION_ALGORITHMS, algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible compression algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible compression algorithms.");
         return false;
     }
     if (!_crypto->negotiatedCmprsC2s(agreed))
@@ -271,7 +271,7 @@ bool ne7ssh_kex::handleInit()
     }
     if (!_crypto->agree(agreed, ne7ssh::COMPRESSION_ALGORITHMS, algos))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "No compatible compression algorithms.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "No compatible compression algorithms.");
         return false;
     }
     if (!_crypto->negotiatedCmprsS2c(agreed))
@@ -285,8 +285,8 @@ bool ne7ssh_kex::handleInit()
 bool ne7ssh_kex::sendKexDHInit()
 {
     ne7ssh_string dhInit;
-    ne7ssh_transport* _transport = session->transport;
-    ne7ssh_crypt* _crypto = session->crypto;
+    ne7ssh_transport* _transport = _session->_transport;
+    ne7ssh_crypt* _crypto = _session->_crypto;
     BigInt publicKey;
     SecureVector<Botan::byte> eVector;
 
@@ -298,8 +298,8 @@ bool ne7ssh_kex::sendKexDHInit()
     dhInit.addChar(SSH2_MSG_KEXDH_INIT);
     dhInit.addBigInt(publicKey);
     ne7ssh_string::bn2vector(eVector, publicKey);
-    e.clear();
-    e.addVector(eVector);
+    _e.clear();
+    _e.addVector(eVector);
 
     if (!_transport->sendPacket(dhInit.value()))
     {
@@ -308,7 +308,7 @@ bool ne7ssh_kex::sendKexDHInit()
 
     if (!_transport->waitForPacket(SSH2_MSG_KEXDH_REPLY))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Timeout while waiting for key exchange dh reply.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Timeout while waiting for key exchange dh reply.");
         return false;
     }
     return true;
@@ -316,8 +316,8 @@ bool ne7ssh_kex::sendKexDHInit()
 
 bool ne7ssh_kex::handleKexDHReply()
 {
-    ne7ssh_transport* _transport = session->transport;
-    ne7ssh_crypt* _crypto = session->crypto;
+    ne7ssh_transport* _transport = _session->_transport;
+    ne7ssh_crypt* _crypto = _session->_crypto;
     SecureVector<Botan::byte> packet;
     _transport->getPacket(packet);
     if (packet.empty() == true)
@@ -332,16 +332,16 @@ bool ne7ssh_kex::handleKexDHReply()
     {
         return false;
     }
-    hostKey.clear();
-    hostKey.addVector(field);
+    _hostKey.clear();
+    _hostKey.addVector(field);
 
     if (!remoteKexDH.getBigInt(publicKey))
     {
         return false;
     }
     ne7ssh_string::bn2vector(fVector, publicKey);
-    f.clear();
-    f.addVector(fVector);
+    _f.clear();
+    _f.addVector(fVector);
 
     if (!remoteKexDH.getString(hSig))
     {
@@ -352,8 +352,8 @@ bool ne7ssh_kex::handleKexDHReply()
     {
         return false;
     }
-    k.clear();
-    k.addVector(kVector);
+    _k.clear();
+    _k.addVector(kVector);
 
     makeH(hVector);
     if (hVector.empty())
@@ -362,10 +362,10 @@ bool ne7ssh_kex::handleKexDHReply()
     }
     if (!_crypto->isInited())
     {
-        session->setSessionID(hVector);
+        _session->setSessionID(hVector);
     }
 
-    if (!_crypto->verifySig(hostKey.value(), hSig))
+    if (!_crypto->verifySig(_hostKey.value(), hSig))
     {
         return false;
     }
@@ -375,13 +375,13 @@ bool ne7ssh_kex::handleKexDHReply()
 
 bool ne7ssh_kex::sendKexNewKeys()
 {
-    ne7ssh_transport* _transport = session->transport;
-    ne7ssh_crypt* _crypto = session->crypto;
+    ne7ssh_transport* _transport = _session->_transport;
+    ne7ssh_crypt* _crypto = _session->_crypto;
     ne7ssh_string newKeys;
 
     if (!_transport->waitForPacket(SSH2_MSG_NEWKEYS))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Timeout while waiting for key exchange newkeys reply.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Timeout while waiting for key exchange newkeys reply.");
         return false;
     }
 
@@ -393,7 +393,7 @@ bool ne7ssh_kex::sendKexNewKeys()
 
     if (!_crypto->makeNewKeys())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Could not make keys.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Could not make keys.");
         return false;
     }
 
@@ -402,17 +402,17 @@ bool ne7ssh_kex::sendKexNewKeys()
 
 void ne7ssh_kex::makeH(Botan::SecureVector<Botan::byte> &hVector)
 {
-    ne7ssh_crypt* _crypto = session->crypto;
+    ne7ssh_crypt* _crypto = _session->_crypto;
     ne7ssh_string hashBytes;
 
-    hashBytes.addVectorField(session->getLocalVersion());
-    hashBytes.addVectorField(session->getRemoteVersion());
-    hashBytes.addVectorField(localKex.value());
-    hashBytes.addVectorField(remotKex.value());
-    hashBytes.addVectorField(hostKey.value());
-    hashBytes.addVectorField(e.value());
-    hashBytes.addVectorField(f.value());
-    hashBytes.addVectorField(k.value());
+    hashBytes.addVectorField(_session->getLocalVersion());
+    hashBytes.addVectorField(_session->getRemoteVersion());
+    hashBytes.addVectorField(_localKex.value());
+    hashBytes.addVectorField(_remotKex.value());
+    hashBytes.addVectorField(_hostKey.value());
+    hashBytes.addVectorField(_e.value());
+    hashBytes.addVectorField(_f.value());
+    hashBytes.addVectorField(_k.value());
 
     _crypto->computeH(hVector, hashBytes.value());
 }

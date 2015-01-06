@@ -105,14 +105,14 @@ class ne7ssh_transport;
 class Ne7sshSftp : public ne7ssh_channel
 {
 private:
-    ne7ssh_session* session;
-    uint32 timeout;
-    uint32 seq;
-    uint8 sftpCmd;
-    ne7ssh_string commBuffer;
-    Botan::SecureVector<Botan::byte> fileBuffer;
+    ne7ssh_session* _session;
+    uint32 _timeout;
+    uint32 _seq;
+    uint8 _sftpCmd;
+    ne7ssh_string _commBuffer;
+    Botan::SecureVector<Botan::byte> _fileBuffer;
     enum writeMode { READ, OVERWRITE, APPEND };
-    uint8 lastError;
+    uint8 _lastError;
     std::string _currentPath;
 
     /**
@@ -196,7 +196,7 @@ private:
     * @param timeSec Timeout in seconds.
     * @return True if the command specified has been received. Otherwise false.
     */
-    bool receiveUntil(uint8 _cmd, uint32 timeSec = 0);
+    bool receiveUntil(uint8 cmd, uint32 timeSec = 0);
 
     /**
     * Receive packets while SFTP subsystem commands received matches specified command.
@@ -204,7 +204,7 @@ private:
     * @param timeSec Timeout in seconds.
     * @return True if all expected data received. Otherwise false.
     */
-    bool receiveWhile(uint8 _cmd, uint32 timeSec = 0);
+    bool receiveWhile(uint8 cmd, uint32 timeSec = 0);
 
     /**
     * Method to process ATTRS packet.
@@ -271,7 +271,7 @@ public:
     * @param _session Pointer to connections session data.
     * @param _channel Pointer to the ne7ssh_channel instance, taken from the new ne7ssh_connection instance.
     */
-    Ne7sshSftp(ne7ssh_session* _session, ne7ssh_channel* _channel);
+    Ne7sshSftp(ne7ssh_session* session, ne7ssh_channel* channel);
 
     /**
     * Default destructor.
@@ -288,9 +288,9 @@ public:
     * This method is used to set a timeout for all SFTP subsystem communications.
     * @param _timeout Timeout in seconds.
     */
-    void setTimeout(uint32 _timeout)
+    void setTimeout(uint32 timeout)
     {
-        timeout = _timeout;
+        _timeout = timeout;
     }
 
     /**

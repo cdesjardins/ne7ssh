@@ -42,11 +42,12 @@ class ne7ssh_session;
 class ne7ssh_transport
 {
 private:
-    uint32 seq, rSeq;
-    const ne7ssh_session* session;
-    SOCKET sock;
-    Botan::SecureVector<Botan::byte> in;
-    Botan::SecureVector<Botan::byte> inBuffer;
+    uint32 _seq;
+    uint32 _rSeq;
+    const ne7ssh_session* _session;
+    SOCKET _sock;
+    Botan::SecureVector<Botan::byte> _in;
+    Botan::SecureVector<Botan::byte> _inBuffer;
 
     /**
      * Switches socket's NonBlocking option on or off.
@@ -71,7 +72,7 @@ public:
      * <p> Transport class handles all socket communications for the ne7ssh library.
      * @param _session Pointer to ne7ssh_session instance.
      */
-    ne7ssh_transport(ne7ssh_session* _session);
+    ne7ssh_transport(ne7ssh_session* session);
 
     /**
      * ne7ssh_transport class destructor.

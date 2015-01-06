@@ -23,7 +23,7 @@ using namespace Botan;
 
 //uint32 ne7ssh_channel::channelCount = 0;
 
-ne7ssh_channel::ne7ssh_channel(ne7ssh_session* _session) : eof(false), closed(false), cmdComplete(false), shellSpawned(false), session(_session), channelOpened(false)
+ne7ssh_channel::ne7ssh_channel(ne7ssh_session* session) : _eof(false), _closed(false), _cmdComplete(false), _shellSpawned(false), _session(session), _channelOpened(false)
 {
 }
 
@@ -34,15 +34,15 @@ ne7ssh_channel::~ne7ssh_channel()
 uint32 ne7ssh_channel::open(uint32 channelID)
 {
     ne7ssh_string packet;
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
 
     packet.addChar(SSH2_MSG_CHANNEL_OPEN);
     packet.addString("session");
     packet.addInt(channelID);
 //  ne7ssh_channel::channelCount++;
-    windowSend = 0;
-    windowRecv = MAX_PACKET_LEN - 2400;
-    packet.addInt(windowRecv);
+    _windowSend = 0;
+    _windowRecv = MAX_PACKET_LEN - 2400;
+    packet.addInt(_windowRecv);
     packet.addInt(MAX_PACKET_LEN);
 
     if (!_transport->sendPacket(packet.value()))
@@ -56,7 +56,7 @@ uint32 ne7ssh_channel::open(uint32 channelID)
     }
     if (handleChannelConfirm())
     {
-        channelOpened = true;
+        _channelOpened = true;
         return channelID;
 //    return (ne7ssh_channel::channelCount - 1);
     }
@@ -68,7 +68,7 @@ uint32 ne7ssh_channel::open(uint32 channelID)
 
 bool ne7ssh_channel::handleChannelConfirm()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     _transport->getPacket(packet);
     ne7ssh_string channelConfirm(packet, 1);
@@ -78,15 +78,15 @@ bool ne7ssh_channel::handleChannelConfirm()
     field = channelConfirm.getInt();
     // Send Channel
     field = channelConfirm.getInt();
-    session->setSendChannel(field);
+    _session->setSendChannel(field);
 
     // Window Size
     field = channelConfirm.getInt();
-    windowSend = field;
+    _windowSend = field;
 
     // Max Packet
     field = channelConfirm.getInt();
-    session->setMaxPacket(field);
+    _session->setMaxPacket(field);
     return true;
 }
 
@@ -101,36 +101,36 @@ bool ne7ssh_channel::adjustWindow(Botan::SecureVector<Botan::byte>& packet)
 
     // add bytes to the window
     field = adjustWindow.getInt();
-    windowSend += field;
+    _windowSend += field;
     return true;
 }
 
 bool ne7ssh_channel::handleEof(Botan::SecureVector<Botan::byte>& packet)
 {
     UNREF_PARAM(packet);
-    this->cmdComplete = true;
-    windowRecv = 0;
-    eof = true;
-    if (!closed)
+    this->_cmdComplete = true;
+    _windowRecv = 0;
+    _eof = true;
+    if (!_closed)
     {
         sendClose();
     }
-    closed = true;
-    channelOpened = false;
-    ne7ssh::errors()->push(session->getSshChannel(), "Remote side responded with EOF.");
+    _closed = true;
+    _channelOpened = false;
+    ne7ssh::errors()->push(_session->getSshChannel(), "Remote side responded with EOF.");
     return false;
 }
 
 void ne7ssh_channel::handleClose(Botan::SecureVector<Botan::byte>& newPacket)
 {
     UNREF_PARAM(newPacket);
-    if (!closed)
+    if (!_closed)
     {
         sendClose();
     }
-    windowRecv = 0;
-    closed = true;
-    channelOpened = false;
+    _windowRecv = 0;
+    _closed = true;
+    _channelOpened = false;
 }
 
 bool ne7ssh_channel::handleDisconnect(Botan::SecureVector<Botan::byte>& packet)
@@ -140,68 +140,68 @@ bool ne7ssh_channel::handleDisconnect(Botan::SecureVector<Botan::byte>& packet)
     SecureVector<Botan::byte> description;
 
     message.getString(description);
-    windowSend = windowRecv = 0;
-    closed = true;
-    channelOpened = false;
+    _windowSend = _windowRecv = 0;
+    _closed = true;
+    _channelOpened = false;
 
-    ne7ssh::errors()->push(session->getSshChannel(), "Remote Site disconnected with Error: %B.", &description);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Remote Site disconnected with Error: %B.", &description);
     return false;
 }
 
 bool ne7ssh_channel::sendClose()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     ne7ssh_string packet;
 
-    if (closed)
+    if (_closed)
     {
         return false;
     }
     packet.addChar(SSH2_MSG_CHANNEL_CLOSE);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
 
     if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
-    windowSend = 0;
-    windowRecv = 0;
-    closed = true;
+    _windowSend = 0;
+    _windowRecv = 0;
+    _closed = true;
     return true;
 }
 
 bool ne7ssh_channel::sendEof()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     ne7ssh_string packet;
 
-    if (closed)
+    if (_closed)
     {
         return false;
     }
     packet.addChar(SSH2_MSG_CHANNEL_EOF);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
 
     if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
-    windowSend = 0;
-    windowRecv = 0;
-    closed = true;
+    _windowSend = 0;
+    _windowRecv = 0;
+    _closed = true;
     return true;
 }
 
 void ne7ssh_channel::sendAdjustWindow()
 {
-    uint32 len = session->getMaxPacket() - windowRecv - 2400;
+    uint32 len = _session->getMaxPacket() - _windowRecv - 2400;
     ne7ssh_string packet;
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
 
     packet.addChar(SSH2_MSG_CHANNEL_WINDOW_ADJUST);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
     packet.addInt(len);
-    windowRecv = len;
+    _windowRecv = len;
 
     _transport->sendPacket(packet.value());
 }
@@ -219,19 +219,19 @@ bool ne7ssh_channel::handleData(Botan::SecureVector<Botan::byte>& packet)
     }
     if (!data.size())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Abnormal. End of stream detected.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Abnormal. End of stream detected.");
     }
-    if (inBuffer.length())
+    if (_inBuffer.length())
     {
-        inBuffer.chop(1);
+        _inBuffer.chop(1);
     }
-    inBuffer.addVector(data);
-    if (inBuffer.length())
+    _inBuffer.addVector(data);
+    if (_inBuffer.length())
     {
-        inBuffer.addChar(0x00);
+        _inBuffer.addChar(0x00);
     }
-    windowRecv -= data.size();
-    if (windowRecv == 0)
+    _windowRecv -= data.size();
+    if (_windowRecv == 0)
     {
         sendAdjustWindow();
     }
@@ -248,21 +248,21 @@ bool ne7ssh_channel::handleExtendedData(Botan::SecureVector<Botan::byte>& packet
     dataType = handleData.getInt();
     if (dataType != 1)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Unable to handle received request.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Unable to handle received request.");
         return false;
     }
 
     if (handleData.getString(data))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Remote side returned the following error: %B", &data);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Remote side returned the following error: %B", &data);
     }
     else
     {
         return false;
     }
 
-    windowRecv -= data.size();
-    if (windowRecv == 0)
+    _windowRecv -= data.size();
+    if (_windowRecv == 0)
     {
         sendAdjustWindow();
     }
@@ -279,13 +279,13 @@ void ne7ssh_channel::handleRequest(Botan::SecureVector<Botan::byte>& packet)
     handleRequest.getString(field);
     if (!memcmp((char*)field.begin(), "exit-signal", 11))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "exit-signal ignored.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "exit-signal ignored.");
     }
     else if (!memcmp((char*)field.begin(), "exit-status", 11))
     {
         handleRequest.getByte();
         signal = handleRequest.getInt();
-        ne7ssh::errors()->push(session->getSshChannel(), "Remote side exited with status: %i.", signal);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Remote side exited with status: %i.", signal);
     }
 
 //  handleRequest.getByte();
@@ -294,18 +294,18 @@ void ne7ssh_channel::handleRequest(Botan::SecureVector<Botan::byte>& packet)
 
 bool ne7ssh_channel::execCmd(const char* cmd)
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     ne7ssh_string packet;
 
-    if (this->shellSpawned)
+    if (this->_shellSpawned)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Remote shell is running. This command cannot be executed.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Remote shell is running. This command cannot be executed.");
         return false;
     }
 
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_REQUEST);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
     packet.addString("exec");
     packet.addChar(0);
     packet.addString(cmd);
@@ -315,18 +315,18 @@ bool ne7ssh_channel::execCmd(const char* cmd)
         return false;
     }
 
-    cmdComplete = false;
+    _cmdComplete = false;
     return true;
 }
 
 void ne7ssh_channel::getShell()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     ne7ssh_string packet;
 
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_REQUEST);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
     packet.addString("pty-req");
     packet.addChar(0);
     packet.addString("dumb");
@@ -342,24 +342,24 @@ void ne7ssh_channel::getShell()
 
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_REQUEST);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
     packet.addString("shell");
     packet.addChar(0);
     if (!_transport->sendPacket(packet.value()))
     {
         return;
     }
-    this->shellSpawned = true;
+    this->_shellSpawned = true;
 }
 
 void ne7ssh_channel::receive()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     bool notFirst = false;
     short status;
 
-    if (eof)
+    if (_eof)
     {
         return;
     }
@@ -369,9 +369,9 @@ void ne7ssh_channel::receive()
         status = _transport->waitForPacket(0, notFirst);
         if (status == -1)
         {
-            eof = true;
-            closed = true;
-            channelOpened = false;
+            _eof = true;
+            _closed = true;
+            _channelOpened = false;
             return;
         }
         if (status != 0)
@@ -427,7 +427,7 @@ bool ne7ssh_channel::handleReceived(Botan::SecureVector<Botan::byte>& _packet)
             break;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Unhandled command encountered: %i.", cmd);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Unhandled command encountered: %i.", cmd);
             return false;
     }
     return true;
@@ -438,21 +438,21 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
     SecureVector<Botan::byte> dataBuff, outBuff, delayedBuff;
     uint32 len, maxBytes, i, dataStart;
 
-    if (delayedBuffer.length())
+    if (_delayedBuffer.length())
     {
-        dataBuff = delayedBuffer.value();
-        delayedBuffer.clear();
+        dataBuff = _delayedBuffer.value();
+        _delayedBuffer.clear();
     }
     dataBuff += data;
 
-    if (!windowSend)
+    if (!_windowSend)
     {
         delayedBuff = dataBuff;
     }
-    else if (windowSend < dataBuff.size())
+    else if (_windowSend < dataBuff.size())
     {
-        outBuff += SecureVector<Botan::byte>(dataBuff.begin(), windowSend);
-        delayedBuff = SecureVector<Botan::byte>(dataBuff.begin() + windowSend, dataBuff.size() - windowSend);
+        outBuff += SecureVector<Botan::byte>(dataBuff.begin(), _windowSend);
+        delayedBuff = SecureVector<Botan::byte>(dataBuff.begin() + _windowSend, dataBuff.size() - _windowSend);
     }
     else
     {
@@ -461,7 +461,7 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
 
     if (delayedBuff.size())
     {
-        delayedBuffer.addVector(delayedBuff);
+        _delayedBuffer.addVector(delayedBuff);
     }
     if (!outBuff.size())
     {
@@ -469,9 +469,9 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
     }
 
     len = outBuff.size();
-    windowSend -= len;
+    _windowSend -= len;
 
-    maxBytes = session->getMaxPacket();
+    maxBytes = _session->getMaxPacket();
     for (i = 0; len > maxBytes - 64; i++)
     {
         dataStart = maxBytes * i;
@@ -480,7 +480,7 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
             dataStart -= 64;
         }
         dataBuff = SecureVector<Botan::byte>(outBuff.begin() + dataStart, maxBytes - 64);
-        outBuffer.addVector(dataBuff);
+        _outBuffer.addVector(dataBuff);
         len -= maxBytes - 64;
     }
     if (len)
@@ -491,48 +491,48 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
             dataStart -= 64;
         }
         dataBuff = SecureVector<Botan::byte>(outBuff.begin() + dataStart, len);
-        outBuffer.addVector(dataBuff);
-        inBuffer.clear();
+        _outBuffer.addVector(dataBuff);
+        _inBuffer.clear();
     }
 }
 
 void ne7ssh_channel::sendAll()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> tmpVar;
     ne7ssh_string packet;
 
-    if (!outBuffer.length() && delayedBuffer.length())
+    if (!_outBuffer.length() && _delayedBuffer.length())
     {
-        tmpVar.swap(delayedBuffer.value());
-        delayedBuffer.clear();
+        tmpVar.swap(_delayedBuffer.value());
+        _delayedBuffer.clear();
         write(tmpVar);
     }
-    if (!outBuffer.length())
+    if (!_outBuffer.length())
     {
         return;
     }
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_DATA);
-    packet.addInt(session->getSendChannel());
-    packet.addVectorField(outBuffer.value());
+    packet.addInt(_session->getSendChannel());
+    packet.addVectorField(_outBuffer.value());
 
-    windowSend -= outBuffer.length();
-    inBuffer.clear();
+    _windowSend -= _outBuffer.length();
+    _inBuffer.clear();
     if (!_transport->sendPacket(packet.value()))
     {
         return;
     }
     else
     {
-        outBuffer.clear();
+        _outBuffer.clear();
     }
 }
 
 bool ne7ssh_channel::adjustRecvWindow(int bufferSize)
 {
-    windowRecv -= bufferSize;
-    if (windowRecv == 0)
+    _windowRecv -= bufferSize;
+    if (_windowRecv == 0)
     {
         sendAdjustWindow();
     }

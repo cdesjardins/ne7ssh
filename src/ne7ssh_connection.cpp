@@ -20,33 +20,33 @@
 
 using namespace Botan;
 
-ne7ssh_connection::ne7ssh_connection() : sock((SOCKET)-1), thisChannel(0), sftp(0), connected(false), cmdRunning(false), cmdClosed(false)
+ne7ssh_connection::ne7ssh_connection() : _sock((SOCKET)-1), _thisChannel(0), _sftp(0), _connected(false), _cmdRunning(false), _cmdClosed(false)
 {
-    session = new ne7ssh_session();
-    crypto = new ne7ssh_crypt(session);
-    transport = new ne7ssh_transport(session);
-    channel = new ne7ssh_channel(session);
-    session->transport = transport;
-    session->crypto = crypto;
+    _session = new ne7ssh_session();
+    _crypto = new ne7ssh_crypt(_session);
+    _transport = new ne7ssh_transport(_session);
+    _channel = new ne7ssh_channel(_session);
+    _session->_transport = _transport;
+    _session->_crypto = _crypto;
 }
 
 ne7ssh_connection::~ne7ssh_connection()
 {
-    delete channel;
-    delete transport;
-    delete crypto;
-    delete session;
+    delete _channel;
+    delete _transport;
+    delete _crypto;
+    delete _session;
 
-    if (sftp)
+    if (_sftp)
     {
-        delete sftp;
+        delete _sftp;
     }
 }
 
 int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, short port, const char* username, const char* password, bool shell, int timeout)
 {
-    sock = transport->establish(host, port, timeout);
-    if (sock == -1)
+    _sock = _transport->establish(host, port, timeout);
+    if (_sock == -1)
     {
         return -1;
     }
@@ -60,7 +60,7 @@ int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, s
         return -1;
     }
 
-    ne7ssh_kex kex(session);
+    ne7ssh_kex kex(_session);
     if (!kex.sendInit())
     {
         return -1;
@@ -93,26 +93,26 @@ int ne7ssh_connection::connectWithPassword(uint32 channelID, const char* host, s
         return -1;
     }
 
-    thisChannel = channel->open(channelID);
-    if (!thisChannel)
+    _thisChannel = _channel->open(channelID);
+    if (!_thisChannel)
     {
         return -1;
     }
 
     if (shell)
     {
-        channel->getShell();
+        _channel->getShell();
     }
 
-    connected = true;
-    this->session->setSshChannel(thisChannel);
-    return thisChannel;
+    _connected = true;
+    this->_session->setSshChannel(_thisChannel);
+    return _thisChannel;
 }
 
 int ne7ssh_connection::connectWithKey(uint32 channelID, const char* host, short port, const char* username, const char* privKeyFileName, bool shell, int timeout)
 {
-    sock = transport->establish(host, port, timeout);
-    if (sock == -1)
+    _sock = _transport->establish(host, port, timeout);
+    if (_sock == -1)
     {
         return -1;
     }
@@ -126,7 +126,7 @@ int ne7ssh_connection::connectWithKey(uint32 channelID, const char* host, short 
         return -1;
     }
 
-    ne7ssh_kex kex(session);
+    ne7ssh_kex kex(_session);
     if (!kex.sendInit())
     {
         return -1;
@@ -159,21 +159,21 @@ int ne7ssh_connection::connectWithKey(uint32 channelID, const char* host, short 
         return -1;
     }
 
-    thisChannel = channel->open(channelID);
-    if (!thisChannel)
+    _thisChannel = _channel->open(channelID);
+    if (!_thisChannel)
     {
         return -1;
     }
 
     if (shell)
     {
-        channel->getShell();
+        _channel->getShell();
     }
 
-    connected = true;
+    _connected = true;
 
-    this->session->setSshChannel(thisChannel);
-    return thisChannel;
+    this->_session->setSshChannel(_thisChannel);
+    return _thisChannel;
 }
 
 bool ne7ssh_connection::requestService(const char* service)
@@ -182,13 +182,13 @@ bool ne7ssh_connection::requestService(const char* service)
     packet.addChar(SSH2_MSG_SERVICE_REQUEST);
     packet.addString(service);
 
-    if (!transport->sendPacket(packet.value()))
+    if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
-    if (!transport->waitForPacket(SSH2_MSG_SERVICE_ACCEPT))
+    if (!_transport->waitForPacket(SSH2_MSG_SERVICE_ACCEPT))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Service request failed.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Service request failed.");
         return false;
     }
     return true;
@@ -208,11 +208,11 @@ bool ne7ssh_connection::authWithPassword(const char* username, const char* passw
     packet.addChar('\0');
     packet.addString(password);
 
-    if (!transport->sendPacket(packet.value()))
+    if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
-    _cmd = transport->waitForPacket(0);
+    _cmd = _transport->waitForPacket(0);
     if (_cmd == SSH2_MSG_USERAUTH_SUCCESS)
     {
         return true;
@@ -221,11 +221,11 @@ bool ne7ssh_connection::authWithPassword(const char* username, const char* passw
     {
         packet.clear();
         packet.addString(password);
-        if (!transport->sendPacket(packet.value()))
+        if (!_transport->sendPacket(packet.value()))
         {
             return false;
         }
-        _cmd = transport->waitForPacket(0);
+        _cmd = _transport->waitForPacket(0);
         if (_cmd == SSH2_MSG_USERAUTH_SUCCESS)
         {
             return true;
@@ -234,7 +234,7 @@ bool ne7ssh_connection::authWithPassword(const char* username, const char* passw
 
     if (_cmd == SSH2_MSG_USERAUTH_FAILURE)
     {
-        transport->getPacket(response);
+        _transport->getPacket(response);
         ne7ssh_string message(response, 1);
         message.getString(methods);
         message.getByte();
@@ -276,13 +276,13 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
             break;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "The key algorithm: %i is not supported.", keyPair.getKeyAlgo());
+            ne7ssh::errors()->push(_session->getSshChannel(), "The key algorithm: %i is not supported.", keyPair.getKeyAlgo());
             return false;
     }
     pubKeyBlob = keyPair.getPublicKeyBlob();
     if (!pubKeyBlob.size())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Invallid public key.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Invallid public key.");
         return false;
     }
     packetEnd.addVectorField(pubKeyBlob);
@@ -291,15 +291,15 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
     packet.addChar(0x0);
     packet.addVector(packetEnd.value());
 
-    if (!transport->sendPacket(packet.value()))
+    if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
 
-    _cmd = transport->waitForPacket(0);
+    _cmd = _transport->waitForPacket(0);
     if (_cmd == SSH2_MSG_USERAUTH_FAILURE)
     {
-        transport->getPacket(response);
+        _transport->getPacket(response);
         ne7ssh_string message(response, 1);
         message.getString(methods);
         message.getByte();
@@ -316,27 +316,27 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
     packet.addChar(0x1);
     packet.addVector(packetEnd.value());
 
-    sigBlob = keyPair.generateSignature(session->getSessionID(), packet.value());
+    sigBlob = keyPair.generateSignature(_session->getSessionID(), packet.value());
     if (!sigBlob.size())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failure while generating the signature.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failure while generating the signature.");
         return false;
     }
 
     packet.addVectorField(sigBlob);
-    if (!transport->sendPacket(packet.value()))
+    if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
 
-    _cmd = transport->waitForPacket(0);
+    _cmd = _transport->waitForPacket(0);
     if (_cmd == SSH2_MSG_USERAUTH_SUCCESS)
     {
         return true;
     }
     else if (_cmd == SSH2_MSG_USERAUTH_FAILURE)
     {
-        transport->getPacket(response);
+        _transport->getPacket(response);
         ne7ssh_string message(response, 1);
         message.getString(methods);
         message.getByte();
@@ -353,7 +353,7 @@ bool ne7ssh_connection::checkRemoteVersion()
 {
     SecureVector<Botan::byte> remoteVer, tmpVar;
     Botan::byte* _pos;
-    if (!transport->receive(remoteVer))
+    if (!_transport->receive(remoteVer))
     {
         return false;
     }
@@ -361,7 +361,7 @@ bool ne7ssh_connection::checkRemoteVersion()
     if (remoteVer.size() < 4 || \
         (memcmp(remoteVer.begin(), "SSH-1.99", 8) && memcmp(remoteVer.begin(), "SSH-2", 5)))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Remote SSH version is not supported. Remote version: %B.", &remoteVer);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Remote SSH version is not supported. Remote version: %B.", &remoteVer);
         return false;
     }
     else
@@ -372,7 +372,7 @@ bool ne7ssh_connection::checkRemoteVersion()
             _pos--;
         }
         tmpVar = SecureVector<Botan::byte>(remoteVer.begin(), _pos - remoteVer.begin() + 1);
-        session->setRemoteVersion(tmpVar);
+        _session->setRemoteVersion(tmpVar);
         return true;
     }
 }
@@ -380,10 +380,10 @@ bool ne7ssh_connection::checkRemoteVersion()
 bool ne7ssh_connection::sendLocalVersion()
 {
     SecureVector<Botan::byte> localVer((const Botan::byte*)ne7ssh::SSH_VERSION, (uint32_t) strlen(ne7ssh::SSH_VERSION));
-    session->setLocalVersion(localVer);
+    _session->setLocalVersion(localVer);
     localVer += SecureVector<Botan::byte>((const Botan::byte*)"\r\n", 2);
 
-    if (!transport->send(localVer))
+    if (!_transport->send(localVer))
     {
         return false;
     }
@@ -395,37 +395,37 @@ bool ne7ssh_connection::sendLocalVersion()
 
 void ne7ssh_connection::handleData()
 {
-    channel->receive();
+    _channel->receive();
 }
 
 void ne7ssh_connection::sendData(const char* data)
 {
     SecureVector<Botan::byte> _cmd((const Botan::byte*) data, (uint32_t) strlen(data));
-    channel->write(_cmd);
+    _channel->write(_cmd);
 }
 
 bool ne7ssh_connection::sendCmd(const char* cmd)
 {
-    cmdRunning = true;
-    return channel->execCmd(cmd);
+    _cmdRunning = true;
+    return _channel->execCmd(cmd);
 }
 
 Ne7sshSftp* ne7ssh_connection::startSftp()
 {
-    if (channel->isRemoteShell())
+    if (_channel->isRemoteShell())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Remote shell is running. SFTP subsystem cannot be started.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Remote shell is running. SFTP subsystem cannot be started.");
         return 0;
     }
-    sftp = new Ne7sshSftp(session, channel);
+    _sftp = new Ne7sshSftp(_session, _channel);
 
-    if (sftp->init())
+    if (_sftp->init())
     {
-        return sftp;
+        return _sftp;
     }
     else
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failure to launch remote sftp subsystem.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failure to launch remote sftp subsystem.");
     }
 
     return 0;
@@ -434,19 +434,19 @@ Ne7sshSftp* ne7ssh_connection::startSftp()
 bool ne7ssh_connection::sendClose()
 {
     bool status;
-    if (channel->isOpen() && !isSftpActive())
+    if (_channel->isOpen() && !isSftpActive())
     {
-        return (channel->sendClose());
+        return (_channel->sendClose());
     }
     else if (getCmdComplete())
     {
-        cmdClosed = true;
+        _cmdClosed = true;
     }
     if (isSftpActive())
     {
-        delete sftp;
-        sftp = 0;
-        status = channel->sendClose();
+        delete _sftp;
+        _sftp = 0;
+        status = _channel->sendClose();
         return status;
     }
     else
@@ -457,7 +457,7 @@ bool ne7ssh_connection::sendClose()
 
 bool ne7ssh_connection::isSftpActive()
 {
-    if (sftp)
+    if (_sftp)
     {
         return true;
     }

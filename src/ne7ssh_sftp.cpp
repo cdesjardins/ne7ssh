@@ -25,10 +25,10 @@
 
 using namespace Botan;
 
-Ne7sshSftp::Ne7sshSftp (ne7ssh_session* _session, ne7ssh_channel* _channel) : ne7ssh_channel(_session), session(_session), timeout(30), seq(1), sftpCmd(0), lastError(0)
+Ne7sshSftp::Ne7sshSftp(ne7ssh_session* session, ne7ssh_channel* channel) : ne7ssh_channel(session), _session(session), _timeout(30), _seq(1), _sftpCmd(0), _lastError(0)
 {
-    windowRecv = _channel->getRecvWindow();
-    windowSend = _channel->getSendWindow();
+    _windowRecv = channel->getRecvWindow();
+    _windowSend = channel->getSendWindow();
 }
 
 Ne7sshSftp::~Ne7sshSftp()
@@ -37,13 +37,13 @@ Ne7sshSftp::~Ne7sshSftp()
 
 bool Ne7sshSftp::init()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     ne7ssh_string packet;
     bool status;
 
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_REQUEST);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
     packet.addString("subsystem");
     packet.addChar(0);
     packet.addString("sftp");
@@ -55,21 +55,21 @@ bool Ne7sshSftp::init()
 
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_DATA);
-    packet.addInt(session->getSendChannel());
+    packet.addInt(_session->getSendChannel());
     packet.addInt(sizeof(uint32) * 2 + sizeof(char));
     packet.addInt(sizeof(uint32) + sizeof(char));
     packet.addChar(SSH2_FXP_INIT);
     packet.addInt(SFTP_VERSION);
 
-    windowSend -= 9;
+    _windowSend -= 9;
 
     if (!_transport->sendPacket(packet.value()))
     {
         return false;
     }
 
-    channelOpened = true;
-    status = receiveUntil(SSH2_FXP_VERSION, this->timeout);
+    _channelOpened = true;
+    status = receiveUntil(SSH2_FXP_VERSION, this->_timeout);
 
     return status;
 }
@@ -79,7 +79,7 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
     ne7ssh_string mainBuffer(packet, 0);
     SecureVector<Botan::byte> sftpBuffer;
     uint32 len = 0;
-    Botan::byte _cmd;
+    Botan::byte cmd;
 
     mainBuffer.getInt();
 
@@ -89,26 +89,26 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
     }
     if (!sftpBuffer.size())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Abnormal. End of stream detected in SFTP subsystem.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Abnormal. End of stream detected in SFTP subsystem.");
     }
 
     adjustRecvWindow(sftpBuffer.size());
 
-    if (seq >= SFTP_MAX_SEQUENCE)
+    if (_seq >= SFTP_MAX_SEQUENCE)
     {
-        seq = 0;
+        _seq = 0;
     }
 
     mainBuffer.clear();
 
-    len = commBuffer.length();
+    len = _commBuffer.length();
 
     if (len)
     {
-        mainBuffer.addVector(commBuffer.value());
+        mainBuffer.addVector(_commBuffer.value());
     }
 
-    commBuffer.addVector(sftpBuffer);
+    _commBuffer.addVector(sftpBuffer);
     mainBuffer.addVector(sftpBuffer);
 
     len = mainBuffer.getInt();
@@ -119,13 +119,13 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
     }
     else
     {
-        commBuffer.clear();
+        _commBuffer.clear();
     }
 
-    _cmd = mainBuffer.getByte();
+    cmd = mainBuffer.getByte();
 
-    this->sftpCmd = _cmd;
-    switch (_cmd)
+    this->_sftpCmd = cmd;
+    switch (cmd)
     {
         case SSH2_FXP_VERSION:
             return handleVersion(mainBuffer.value());
@@ -146,7 +146,7 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
             return processAttrs(mainBuffer.value());
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Unhandled SFTP subsystem command: %i.", _cmd);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Unhandled SFTP subsystem command: %i.", cmd);
     }
 
     return false;
@@ -154,12 +154,12 @@ bool Ne7sshSftp::handleData(Botan::SecureVector<Botan::byte>& packet)
 
 bool Ne7sshSftp::receiveWindowAdjust()
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> packet;
 
     if (!_transport->waitForPacket(SSH2_MSG_CHANNEL_WINDOW_ADJUST))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Remote side could not adjust the Window.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Remote side could not adjust the Window.");
         return false;
     }
     _transport->getPacket(packet);
@@ -170,17 +170,17 @@ bool Ne7sshSftp::receiveWindowAdjust()
     return true;
 }
 
-bool Ne7sshSftp::receiveUntil(uint8 _cmd, uint32 timeSec)
+bool Ne7sshSftp::receiveUntil(uint8 cmd, uint32 timeSec)
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     uint32 cutoff = timeSec * 1000000, timeout = 0;
     uint32 prevSize = 0;
     short status;
     bool forever = true;
 
-    this->sftpCmd = 0;
-    commBuffer.clear();
+    this->_sftpCmd = 0;
+    _commBuffer.clear();
 
     while (forever)
     {
@@ -194,16 +194,16 @@ bool Ne7sshSftp::receiveUntil(uint8 _cmd, uint32 timeSec)
             }
         }
 
-        if (commBuffer.length() > prevSize)
+        if (_commBuffer.length() > prevSize)
         {
             timeout = 0;
         }
 
-        prevSize = commBuffer.length();
+        prevSize = _commBuffer.length();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-        if (sftpCmd == _cmd)
+        if (_sftpCmd == cmd)
         {
             return true;
         }
@@ -223,17 +223,17 @@ bool Ne7sshSftp::receiveUntil(uint8 _cmd, uint32 timeSec)
     return false;
 }
 
-bool Ne7sshSftp::receiveWhile(uint8 _cmd, uint32 timeSec)
+bool Ne7sshSftp::receiveWhile(uint8 cmd, uint32 timeSec)
 {
-    ne7ssh_transport* _transport = session->transport;
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> packet;
     uint32 cutoff = timeSec * 1000000, timeout = 0;
     uint32 prevSize = 0;
     short status;
     bool forever = true;
 
-    this->sftpCmd = _cmd;
-    commBuffer.clear();
+    this->_sftpCmd = cmd;
+    _commBuffer.clear();
 
     while (forever)
     {
@@ -247,20 +247,20 @@ bool Ne7sshSftp::receiveWhile(uint8 _cmd, uint32 timeSec)
             }
         }
 
-        if (commBuffer.length() > prevSize)
+        if (_commBuffer.length() > prevSize)
         {
             timeout = 0;
         }
-        if (commBuffer.length() == 0)
+        if (_commBuffer.length() == 0)
         {
             return true;
         }
 
-        prevSize = commBuffer.length();
+        prevSize = _commBuffer.length();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-        if (sftpCmd != _cmd)
+        if (_sftpCmd != cmd)
         {
             return true;
         }
@@ -290,7 +290,7 @@ bool Ne7sshSftp::handleVersion(Botan::SecureVector<Botan::byte>& packet)
 
     if (version != SFTP_VERSION)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Unsupported SFTP version: %i.", version);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Unsupported SFTP version: %i.", version);
         return false;
     }
 
@@ -309,8 +309,8 @@ bool Ne7sshSftp::handleStatus(Botan::SecureVector<Botan::byte>& packet)
 
     if (errorID)
     {
-        lastError = (uint8)errorID;
-        ne7ssh::errors()->push(session->getSshChannel(), "SFTP Error code: <%i>, description: %s.", errorID, errorStr.begin());
+        _lastError = (uint8)errorID;
+        ne7ssh::errors()->push(_session->getSshChannel(), "SFTP Error code: <%i>, description: %s.", errorID, errorStr.begin());
         return false;
     }
     return true;
@@ -343,13 +343,13 @@ bool Ne7sshSftp::handleSftpData(Botan::SecureVector<Botan::byte>& packet)
 
     if (data.size() == 0)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Abnormal. End of stream detected.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Abnormal. End of stream detected.");
         return false;
     }
 
-    commBuffer.clear();
-    fileBuffer.clear();
-    fileBuffer.swap(data);
+    _commBuffer.clear();
+    _fileBuffer.clear();
+    _fileBuffer.swap(data);
     return true;
 }
 
@@ -398,7 +398,7 @@ bool Ne7sshSftp::handleNames(Botan::SecureVector<Botan::byte>& packet)
             attrs.mtime = sftpBuffer.getInt();
         }
     }
-    fileBuffer += tmpVar.value();
+    _fileBuffer += tmpVar.value();
 
     return true;
 }
@@ -438,8 +438,8 @@ bool Ne7sshSftp::processAttrs(Botan::SecureVector<Botan::byte>& packet)
 uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
 {
     uint32 mode;
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     ne7ssh_string fullPath;
 
@@ -465,19 +465,19 @@ uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
             break;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Unsupported file opening mode: %i.", shortMode);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Unsupported file opening mode: %i.", shortMode);
             return 0;
     }
 
     packet.addChar(SSH2_FXP_OPEN);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
     packet.addInt(mode);
     packet.addInt(0);
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -486,9 +486,9 @@ uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
         return 0;
     }
 
-    windowSend -= 21 + fullPath.length();
+    _windowSend -= 21 + fullPath.length();
 
-    status = receiveUntil(SSH2_FXP_HANDLE, this->timeout);
+    status = receiveUntil(SSH2_FXP_HANDLE, this->_timeout);
 
     if (!status)
     {
@@ -496,14 +496,14 @@ uint32 Ne7sshSftp::openFile(const char* filename, uint8 shortMode)
     }
     else
     {
-        return (seq - 1);
+        return (_seq - 1);
     }
 }
 
 uint32 Ne7sshSftp::openDir(const char* dirname)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     ne7ssh_string fullPath = getFullPath(dirname);
 
@@ -513,12 +513,12 @@ uint32 Ne7sshSftp::openDir(const char* dirname)
     }
 
     packet.addChar(SSH2_FXP_OPENDIR);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -527,9 +527,9 @@ uint32 Ne7sshSftp::openDir(const char* dirname)
         return 0;
     }
 
-    windowSend -= 13 + fullPath.length();
+    _windowSend -= 13 + fullPath.length();
 
-    status = receiveUntil(SSH2_FXP_HANDLE, this->timeout);
+    status = receiveUntil(SSH2_FXP_HANDLE, this->_timeout);
 
     if (!status)
     {
@@ -537,14 +537,14 @@ uint32 Ne7sshSftp::openDir(const char* dirname)
     }
     else
     {
-        return (seq - 1);
+        return (_seq - 1);
     }
 }
 
 bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
 
@@ -554,7 +554,7 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
     }
 
     packet.addChar(SSH2_FXP_READ);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addInt(remoteFile->_handle.length());
     packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
     packet.addInt64(offset);
@@ -562,7 +562,7 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -571,17 +571,17 @@ bool Ne7sshSftp::readFile(uint32 fileID, uint64 offset)
         return false;
     }
 
-    windowSend -= remoteFile->_handle.length() + 25;
+    _windowSend -= remoteFile->_handle.length() + 25;
 
-    status = receiveWhile(SSH2_FXP_DATA, this->timeout);
+    status = receiveWhile(SSH2_FXP_DATA, this->_timeout);
 
     return status;
 }
 
 bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 offset)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
     uint32 sent = 0, currentLen = 0;
@@ -589,7 +589,7 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
 
     if (len > SFTP_MAX_MSG_SIZE)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Could not write. Datablock larger than maximum msg size. Remote file ID %i.", fileID);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Could not write. Datablock larger than maximum msg size. Remote file ID %i.", fileID);
         return false;
     }
 
@@ -599,7 +599,7 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
     }
 
     packet.addChar(SSH2_FXP_WRITE);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addInt(remoteFile->_handle.length());
     packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
     packet.addInt64(offset);
@@ -607,14 +607,14 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return false;
     }
-    windowSend -= remoteFile->_handle.length() + 25;
+    _windowSend -= remoteFile->_handle.length() + 25;
 
     while (sent < len)
     {
-        currentLen = len - sent < windowSend ? len - sent : windowSend;
+        currentLen = len - sent < _windowSend ? len - sent : _windowSend;
         currentLen = currentLen < (uint32)(SFTP_MAX_PACKET_SIZE - (remoteFile->_handle.length() + 86)) ? currentLen : SFTP_MAX_PACKET_SIZE - (remoteFile->_handle.length() + 86);
 
         if (sent)
@@ -643,26 +643,26 @@ bool Ne7sshSftp::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 
             return false;
         }
 
-        windowSend -= currentLen;
+        _windowSend -= currentLen;
         sent += currentLen;
-        if (!windowSend)
+        if (!_windowSend)
         {
             if (!receiveWindowAdjust())
             {
-                ne7ssh::errors()->push(session->getSshChannel(), "Remote side could not adjust the Window.");
+                ne7ssh::errors()->push(_session->getSshChannel(), "Remote side could not adjust the Window.");
                 return false;
             }
         }
 //    if (sent - currentLen) break;
     }
-    status = receiveUntil(SSH2_FXP_STATUS, this->timeout);
+    status = receiveUntil(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
 bool Ne7sshSftp::closeFile(uint32 fileID)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     uint16 i;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
@@ -673,13 +673,13 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
     }
 
     packet.addChar(SSH2_FXP_CLOSE);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addInt(remoteFile->_handle.length());
     packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -688,7 +688,7 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
         return false;
     }
 
-    windowSend -= remoteFile->_handle.length() + 13;
+    _windowSend -= remoteFile->_handle.length() + 13;
 
     for (i = 0; i < sftpFiles.size(); i++)
     {
@@ -699,7 +699,7 @@ bool Ne7sshSftp::closeFile(uint32 fileID)
         }
     }
 
-    status = receiveUntil(SSH2_FXP_STATUS, this->timeout);
+    status = receiveUntil(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
@@ -786,16 +786,16 @@ Ne7sshSftp::sftpFile* Ne7sshSftp::getFileHandle(uint32 fileID)
             return &sftpFiles[i];
         }
     }
-    ne7ssh::errors()->push(session->getSshChannel(), "Invalid file ID: %i.", fileID);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Invalid file ID: %i.", fileID);
     return 0;
 }
 
 bool Ne7sshSftp::getFileStats(const char* remoteFile, bool followSymLinks)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
-    uint8 _cmd = followSymLinks ? SSH2_FXP_STAT : SSH2_FXP_LSTAT;
+    uint8 cmd = followSymLinks ? SSH2_FXP_STAT : SSH2_FXP_LSTAT;
     ne7ssh_string fullPath = getFullPath(remoteFile);
 
     if (!fullPath.length())
@@ -808,14 +808,14 @@ bool Ne7sshSftp::getFileStats(const char* remoteFile, bool followSymLinks)
         return false;
     }
 
-    packet.addChar(_cmd);
-    packet.addInt(this->seq++);
+    packet.addChar(cmd);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
     packet.addInt(SSH2_FILEXFER_ATTR_SIZE | SSH2_FILEXFER_ATTR_UIDGID | SSH2_FILEXFER_ATTR_PERMISSIONS | SSH2_FILEXFER_ATTR_ACMODTIME);
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -824,16 +824,16 @@ bool Ne7sshSftp::getFileStats(const char* remoteFile, bool followSymLinks)
         return false;
     }
 
-    windowSend -= 17 + fullPath.length();
+    _windowSend -= 17 + fullPath.length();
 
-    status = receiveWhile(SSH2_FXP_ATTRS, this->timeout);
+    status = receiveWhile(SSH2_FXP_ATTRS, this->_timeout);
     return status;
 }
 
 bool Ne7sshSftp::getFStat(uint32 fileID)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     sftpFile* remoteFile = getFileHandle(fileID);
 
@@ -842,13 +842,13 @@ bool Ne7sshSftp::getFStat(uint32 fileID)
         return false;
     }
     packet.addChar(SSH2_FXP_FSTAT);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addInt(remoteFile->_handle.length());
     packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -857,9 +857,9 @@ bool Ne7sshSftp::getFStat(uint32 fileID)
         return false;
     }
 
-    windowSend -= remoteFile->_handle.length() + 13;
+    _windowSend -= remoteFile->_handle.length() + 13;
 
-    status = receiveWhile(SSH2_FXP_ATTRS, this->timeout);
+    status = receiveWhile(SSH2_FXP_ATTRS, this->_timeout);
     return status;
 }
 
@@ -867,7 +867,7 @@ uint64 Ne7sshSftp::getFileSize(uint32 fileID)
 {
     if (!getFStat(fileID))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return 0;
     }
 
@@ -878,7 +878,7 @@ bool Ne7sshSftp::getFileAttrs(Ne7SftpSubsystem::fileAttrs& attributes, const cha
 {
     if (!remoteFile)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
     }
     ne7ssh_string fullPath = getFullPath(remoteFile);
@@ -889,7 +889,7 @@ bool Ne7sshSftp::getFileAttrs(Ne7SftpSubsystem::fileAttrs& attributes, const cha
 
     if (!getFileStats((const char*)fullPath.value().begin(), followSymLinks))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
     }
 
@@ -911,7 +911,7 @@ bool Ne7sshSftp::getFileAttrs(sftpFileAttrs& attributes, Botan::SecureVector<Bot
     }
     if (!getFileStats((const char*)remoteFile.begin(), followSymLinks))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
     }
     attributes.size = attrs.size;
@@ -929,7 +929,7 @@ bool Ne7sshSftp::isType(const char* remoteFile, uint32 type)
     uint32 perms;
     if (!remoteFile)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
     }
     ne7ssh_string fullPath = getFullPath(remoteFile);
@@ -940,7 +940,7 @@ bool Ne7sshSftp::isType(const char* remoteFile, uint32 type)
 
     if (!getFileStats((const char*)fullPath.value().begin()))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failed to get remote file attributes.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
     }
 
@@ -974,7 +974,7 @@ bool Ne7sshSftp::get(const char* remoteFile, FILE* localFile)
 
     if (!localFile)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Invalid local or remote file.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Invalid local or remote file.");
         return false;
     }
 
@@ -989,23 +989,23 @@ bool Ne7sshSftp::get(const char* remoteFile, FILE* localFile)
 
     if (!size)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "File size is zero.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "File size is zero.");
         return false;
     }
 
     while (size > offset)
     {
         readFile(fileID, offset);
-        if (fileBuffer.size() == 0)
+        if (_fileBuffer.size() == 0)
         {
             return false;
         }
         localBuffer.clear();
-        localBuffer.swap(fileBuffer);
+        localBuffer.swap(_fileBuffer);
 
         if (!fwrite(localBuffer.begin(), (size_t) localBuffer.size(), 1, localFile))
         {
-            ne7ssh::errors()->push(session->getSshChannel(), "Could not write to local file. Remote file ID %i.", fileID);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Could not write to local file. Remote file ID %i.", fileID);
             return false;
         }
         offset += localBuffer.size();
@@ -1028,7 +1028,7 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
 
     if (!localFile || !remoteFile)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Invalid local or remote file.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Invalid local or remote file.");
         return false;
     }
 
@@ -1045,7 +1045,7 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
 
     if (!size)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "File size is zero.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "File size is zero.");
         return false;
     }
 
@@ -1056,7 +1056,7 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
 
         if (!fread(buffer.get(), len, 1, localFile))
         {
-            ne7ssh::errors()->push(session->getSshChannel(), "Could not read from local file. Remote file ID %i.", fileID);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Could not read from local file. Remote file ID %i.", fileID);
             return false;
         }
         if (!writeFile(fileID, buffer.get(), len, offset))
@@ -1075,8 +1075,8 @@ bool Ne7sshSftp::put(FILE* localFile, const char* remoteFile)
 
 bool Ne7sshSftp::rm(const char* remoteFile)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     if (!remoteFile)
     {
@@ -1090,12 +1090,12 @@ bool Ne7sshSftp::rm(const char* remoteFile)
     }
 
     packet.addChar(SSH2_FXP_REMOVE);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return false;
     }
 
@@ -1104,16 +1104,16 @@ bool Ne7sshSftp::rm(const char* remoteFile)
         return false;
     }
 
-    windowSend -= 13 + fullPath.length();
+    _windowSend -= 13 + fullPath.length();
 
-    status = receiveWhile(SSH2_FXP_STATUS, this->timeout);
+    status = receiveWhile(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
 bool Ne7sshSftp::mv(const char* oldFile, const char* newFile)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     if (!oldFile || !newFile)
     {
@@ -1128,13 +1128,13 @@ bool Ne7sshSftp::mv(const char* oldFile, const char* newFile)
     }
 
     packet.addChar(SSH2_FXP_RENAME);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(oldPath.value());
     packet.addVectorField(newPath.value());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -1143,16 +1143,16 @@ bool Ne7sshSftp::mv(const char* oldFile, const char* newFile)
         return false;
     }
 
-    windowSend -= oldPath.length() + newPath.length() + 17;
+    _windowSend -= oldPath.length() + newPath.length() + 17;
 
-    status = receiveWhile(SSH2_FXP_STATUS, this->timeout);
+    status = receiveWhile(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
 bool Ne7sshSftp::mkdir(const char* remoteDir)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     if (!remoteDir)
     {
@@ -1166,13 +1166,13 @@ bool Ne7sshSftp::mkdir(const char* remoteDir)
     }
 
     packet.addChar(SSH2_FXP_MKDIR);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
     packet.addInt(0);
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -1181,16 +1181,16 @@ bool Ne7sshSftp::mkdir(const char* remoteDir)
         return false;
     }
 
-    windowSend -= fullPath.length() + 17;
+    _windowSend -= fullPath.length() + 17;
 
-    status = receiveWhile(SSH2_FXP_STATUS, this->timeout);
+    status = receiveWhile(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
 bool Ne7sshSftp::rmdir(const char* remoteDir)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     if (!remoteDir)
     {
@@ -1204,12 +1204,12 @@ bool Ne7sshSftp::rmdir(const char* remoteDir)
     }
 
     packet.addChar(SSH2_FXP_RMDIR);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -1218,16 +1218,16 @@ bool Ne7sshSftp::rmdir(const char* remoteDir)
         return false;
     }
 
-    windowSend -= fullPath.length() + 13;
+    _windowSend -= fullPath.length() + 13;
 
-    status = receiveWhile(SSH2_FXP_STATUS, this->timeout);
+    status = receiveWhile(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
 const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     ne7ssh_string tmpVar;
     SecureVector<Botan::byte> fileName;
     bool status = true;
@@ -1249,19 +1249,19 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
     {
         return 0;
     }
-    fileBuffer.clear();
+    _fileBuffer.clear();
 
     while (status)
     {
         packet.clear();
         packet.addChar(SSH2_FXP_READDIR);
-        packet.addInt(this->seq++);
+        packet.addInt(this->_seq++);
         packet.addInt(remoteFile->_handle.length());
         packet.addBytes((Botan::byte*)remoteFile->_handle.c_str(), remoteFile->_handle.length());
 
         if (!packet.isChannelSet())
         {
-            ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+            ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
             return 0;
         }
 
@@ -1270,17 +1270,17 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
             return 0;
         }
 
-        windowSend -= remoteFile->_handle.length() + 13;
+        _windowSend -= remoteFile->_handle.length() + 13;
 
-        status = receiveWhile(SSH2_FXP_NAME, this->timeout);
+        status = receiveWhile(SSH2_FXP_NAME, this->_timeout);
     }
-    if (lastError > 1)
+    if (_lastError > 1)
     {
         return 0;
     }
 
     packet.clear();
-    packet.addVector(fileBuffer);
+    packet.addVector(_fileBuffer);
     fileCount = packet.getInt();
     tmpVar.clear();
     for (i = 0; i < fileCount; i++)
@@ -1299,19 +1299,19 @@ const char* Ne7sshSftp::ls(const char* remoteDir, bool longNames)
             tmpVar.addVector(fileName);
         }
     }
-    fileBuffer.swap(tmpVar.value());
+    _fileBuffer.swap(tmpVar.value());
 
     if (!closeFile(fileID))
     {
         return 0;
     }
-    return (const char*)fileBuffer.begin();
+    return (const char*)_fileBuffer.begin();
 }
 
 bool Ne7sshSftp::cd(const char* remoteDir)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     SecureVector<Botan::byte> fileName;
     uint32 fileCount;
     bool status;
@@ -1326,15 +1326,15 @@ bool Ne7sshSftp::cd(const char* remoteDir)
         return false;
     }
 
-    fileBuffer.clear();
+    _fileBuffer.clear();
 
     packet.addChar(SSH2_FXP_REALPATH);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return false;
     }
 
@@ -1343,17 +1343,17 @@ bool Ne7sshSftp::cd(const char* remoteDir)
         return false;
     }
 
-    windowSend -= fullPath.length() + 13;
+    _windowSend -= fullPath.length() + 13;
 
-    status = receiveWhile(SSH2_FXP_NAME, this->timeout);
+    status = receiveWhile(SSH2_FXP_NAME, this->_timeout);
     if (!status)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Could not change to remote directory: %s.", remoteDir);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Could not change to remote directory: %s.", remoteDir);
         return false;
     }
 
     packet.clear();
-    packet.addVector(fileBuffer);
+    packet.addVector(_fileBuffer);
     fileCount = packet.getInt();
     if (!fileCount)
     {
@@ -1367,8 +1367,8 @@ bool Ne7sshSftp::cd(const char* remoteDir)
 
 bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     if (!remoteFile)
     {
@@ -1414,7 +1414,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
             octet = strtol(converter, (char**)&_pos, 8);
             if (octet > 07777)
             {
-                ne7ssh::errors()->push(session->getSshChannel(), "Invalid permission octet.");
+                ne7ssh::errors()->push(_session->getSshChannel(), "Invalid permission octet.");
                 return false;
             }
             if (len == 3)
@@ -1459,7 +1459,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
                         break;
 
                     default:
-                        ne7ssh::errors()->push(session->getSshChannel(), "Invalid mode string.");
+                        ne7ssh::errors()->push(_session->getSshChannel(), "Invalid mode string.");
                         return false;
                 }
                 _pos++;
@@ -1599,7 +1599,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
                         break;
 
                     default:
-                        ne7ssh::errors()->push(session->getSshChannel(), "Invalid mode string.");
+                        ne7ssh::errors()->push(_session->getSshChannel(), "Invalid mode string.");
                         return false;
                 }
                 _pos++;
@@ -1608,14 +1608,14 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
     }
 
     packet.addChar(SSH2_FXP_SETSTAT);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
     packet.addInt(SSH2_FILEXFER_ATTR_PERMISSIONS);
     packet.addInt(perms);
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return 0;
     }
 
@@ -1624,16 +1624,16 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
         return false;
     }
 
-    windowSend -= fullPath.length() + 21;
+    _windowSend -= fullPath.length() + 21;
 
-    status = receiveWhile(SSH2_FXP_STATUS, this->timeout);
+    status = receiveWhile(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
 bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
 {
-    Ne7sshSftpPacket packet(session->getSendChannel());
-    ne7ssh_transport* _transport = session->transport;
+    Ne7sshSftpPacket packet(_session->getSendChannel());
+    ne7ssh_transport* _transport = _session->_transport;
     bool status;
     uint32 old_uid, old_gid;
     if (!remoteFile)
@@ -1656,7 +1656,7 @@ bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
     old_gid = attrs.group;
 
     packet.addChar(SSH2_FXP_SETSTAT);
-    packet.addInt(this->seq++);
+    packet.addInt(this->_seq++);
     packet.addVectorField(fullPath.value());
     packet.addInt(SSH2_FILEXFER_ATTR_UIDGID);
     if (uid)
@@ -1678,7 +1678,7 @@ bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
 
     if (!packet.isChannelSet())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Channel not set in sftp packet class.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Channel not set in sftp packet class.");
         return false;
     }
 
@@ -1687,9 +1687,9 @@ bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
         return false;
     }
 
-    windowSend -= fullPath.length() + 25;
+    _windowSend -= fullPath.length() + 25;
 
-    status = receiveWhile(SSH2_FXP_STATUS, this->timeout);
+    status = receiveWhile(SSH2_FXP_STATUS, this->_timeout);
     return status;
 }
 
