@@ -80,7 +80,8 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
     pubKeyBlob.addBigInt(e);
     pubKeyBlob.addBigInt(n);
 
-    Pipe base64it(new Base64_Encoder);
+    std::unique_ptr<Base64_Encoder> b64encoder(new Base64_Encoder);
+    Pipe base64it(b64encoder.get());
     base64it.process_msg(pubKeyBlob.value());
 
     SecureVector<Botan::byte> pubKeyBase64 = base64it.read_all();
@@ -167,7 +168,8 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     pubKeyBlob.addBigInt(g);
     pubKeyBlob.addBigInt(y);
 
-    Pipe base64it(new Base64_Encoder);
+    std::unique_ptr<Base64_Encoder> b64encoder(new Base64_Encoder);
+    Pipe base64it(b64encoder.get());
     base64it.process_msg(pubKeyBlob.value());
 
     SecureVector<Botan::byte> pubKeyBase64 = base64it.read_all();
@@ -254,13 +256,11 @@ SecureVector<Botan::byte> ne7ssh_keys::generateDSASignature(Botan::SecureVector<
         return sig.value();
     }
 
-    PK_Signer* DSASigner = new PK_Signer(*_dsaPrivateKey, "EMSA1(SHA-1)");
+    std::unique_ptr<PK_Signer> DSASigner(new PK_Signer(*_dsaPrivateKey, "EMSA1(SHA-1)"));
     sigRaw = DSASigner->sign_message(sigData.value(), *ne7ssh::s_rng);
-
     if (!sigRaw.size())
     {
         ne7ssh::errors()->push(-1, "Failure to generate DSA signature.");
-        delete DSASigner;
         return sig.value();
     }
 
@@ -271,7 +271,6 @@ SecureVector<Botan::byte> ne7ssh_keys::generateDSASignature(Botan::SecureVector<
         return sig.value();
     }
 
-    delete DSASigner;
     sig.addString("ssh-dss");
     sig.addVectorField(sigRaw);
     return (sig.value());
@@ -290,16 +289,14 @@ SecureVector<Botan::byte> ne7ssh_keys::generateRSASignature(Botan::SecureVector<
         return sig.value();
     }
 
-    PK_Signer* RSASigner = new PK_Signer(*_rsaPrivateKey, "EMSA3(SHA-1)");
+    std::unique_ptr<PK_Signer> RSASigner(new PK_Signer(*_rsaPrivateKey, "EMSA3(SHA-1)"));
     sigRaw = RSASigner->sign_message(sigData.value(), *ne7ssh::s_rng);
     if (!sigRaw.size())
     {
         ne7ssh::errors()->push(-1, "Failure while generating RSA signature.");
-        delete RSASigner;
         return sig.value();
     }
 
-    delete RSASigner;
     sig.addString("ssh-rsa");
     sig.addVectorField(sigRaw);
     return (sig.value());

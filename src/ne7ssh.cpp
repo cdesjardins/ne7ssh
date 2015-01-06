@@ -54,53 +54,52 @@ class Locking_AutoSeeded_RNG : public Botan::RandomNumberGenerator
 {
 public:
     Locking_AutoSeeded_RNG()
+        : _rng(new Botan::AutoSeeded_RNG())
     {
-        rng = new Botan::AutoSeeded_RNG();
     }
 
     ~Locking_AutoSeeded_RNG()
     {
-        delete rng;
     }
 
     void randomize(byte output[], size_t length)
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        rng->randomize(output, length);
+        _rng->randomize(output, length);
     }
 
     void clear() throw()
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        rng->clear();
+        _rng->clear();
     }
 
     std::string name() const
     {
-        return rng->name();
+        return _rng->name();
     }
 
     void reseed(size_t bits_to_collect)
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        rng->reseed(bits_to_collect);
+        _rng->reseed(bits_to_collect);
     }
 
     void add_entropy_source(EntropySource* source)
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        rng->add_entropy_source(source);
+        _rng->add_entropy_source(source);
     }
 
     void add_entropy(const byte in[], size_t length)
     {
         std::unique_lock<std::recursive_mutex> lock(_mutex);
-        rng->add_entropy(in, length);
+        _rng->add_entropy(in, length);
     }
 
 private:
     std::recursive_mutex _mutex;
-    Botan::RandomNumberGenerator* rng;
+    std::unique_ptr<Botan::RandomNumberGenerator> _rng;
 };
 
 std::shared_ptr<ne7ssh> ne7ssh::ne7sshCreate()
