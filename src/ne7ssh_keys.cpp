@@ -19,6 +19,7 @@
 #include <botan/base64.h>
 #include <botan/look_pk.h>
 #include <cstdio>
+#include <fstream>
 #include <ctype.h>
 #include <sys/stat.h>
 
@@ -45,8 +46,8 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
     BigInt e, n, d, p, q;
     BigInt dmp1, dmq1, iqmp;
     ne7ssh_string pubKeyBlob;
-    FILE* privKeyFile;
-    FILE* pubKeyFile;
+    ofstream privKeyFile;
+    ofstream pubKeyFile;
     std::string privKeyEncoded;
     DER_Encoder encoder;
 
@@ -84,26 +85,27 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
 
     SecureVector<Botan::byte> pubKeyBase64 = base64it.read_all();
 
-    pubKeyFile = fopen(pubKeyFileName, "w");
+    pubKeyFile.open(pubKeyFileName);
 
-    if (!pubKeyFile)
+    if (pubKeyFile.is_open() == false)
     {
         ne7ssh::errors()->push(-1, "Cannot open file where public key is stored. Filename: %s", pubKeyFileName);
         return false;
     }
-
-    if ((!fwrite("ssh-rsa ", 8, 1, pubKeyFile)) ||
-        (!fwrite(pubKeyBase64.begin(), (size_t) pubKeyBase64.size(), 1, pubKeyFile)) ||
-        (!fwrite(" ", 1, 1, pubKeyFile)) ||
-        (!fwrite(fqdn, strlen(fqdn), 1, pubKeyFile)) ||
-        (!fwrite("\n", 1, 1, pubKeyFile)))
+    pubKeyFile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    try
+    {
+        pubKeyFile.write("ssh-rsa ", 8);
+        pubKeyFile.write((char*)pubKeyBase64.begin(), (size_t)pubKeyBase64.size());
+        pubKeyFile.write(" ", 1);
+        pubKeyFile.write(fqdn, strlen(fqdn));
+        pubKeyFile.write("\n", 1);
+    }
+    catch (const std::ofstream::failure &)
     {
         ne7ssh::errors()->push(-1, "I/O error while writting to file: %s.", pubKeyFileName);
-        fclose(pubKeyFile);
         return false;
     }
-
-    fclose(pubKeyFile);
 
     privKeyEncoded = PEM_Code::encode(
         DER_Encoder().start_cons(SEQUENCE)
@@ -119,19 +121,18 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
         .end_cons()
         .get_contents(), "RSA PRIVATE KEY");
 
-    privKeyFile = fopen(privKeyFileName, "w");
-    if (!privKeyFile)
+    privKeyFile.open(privKeyFileName);
+    if (privKeyFile.is_open() == false)
     {
         ne7ssh::errors()->push(-1, "Cannot open file where the private key is stored. Filename: %s.", privKeyFileName);
         return false;
     }
-
-    if (!fwrite(privKeyEncoded.c_str(), privKeyEncoded.length(), 1, privKeyFile))
+    privKeyFile.write(privKeyEncoded.c_str(), privKeyEncoded.length());
+    if (privKeyFile.fail() == true)
     {
         ne7ssh::errors()->push(-1, "IO error while writting to file: %s.", privKeyFileName);
         return false;
     }
-    fclose(privKeyFile);
     return true;
 }
 
@@ -140,8 +141,8 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     DER_Encoder encoder;
     BigInt p, q, g, y, x;
     ne7ssh_string pubKeyBlob;
-    FILE* privKeyFile;
-    FILE* pubKeyFile;
+    ofstream privKeyFile;
+    ofstream pubKeyFile;
     std::string privKeyEncoded;
 
     if (keySize != 1024)
@@ -171,24 +172,27 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
 
     SecureVector<Botan::byte> pubKeyBase64 = base64it.read_all();
 
-    pubKeyFile = fopen(pubKeyFileName, "w");
+    pubKeyFile.open(pubKeyFileName);
 
-    if (!pubKeyFile)
+    if (pubKeyFile.is_open() == false)
     {
         ne7ssh::errors()->push(-1, "Cannot open file where public key is stored. Filename: %s", pubKeyFileName);
         return false;
     }
-
-    if ((!fwrite("ssh-dss ", 8, 1, pubKeyFile)) ||
-        (!fwrite(pubKeyBase64.begin(), (size_t) pubKeyBase64.size(), 1, pubKeyFile)) ||
-        (!fwrite(" ", 1, 1, pubKeyFile)) ||
-        (!fwrite(fqdn, strlen(fqdn), 1, pubKeyFile)) ||
-        (!fwrite("\n", 1, 1, pubKeyFile)))
+    pubKeyFile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    try
+    {
+        pubKeyFile.write("ssh-dss ", 8);
+        pubKeyFile.write((char*)pubKeyBase64.begin(), pubKeyBase64.size());
+        pubKeyFile.write(" ", 1);
+        pubKeyFile.write(fqdn, strlen(fqdn));
+        pubKeyFile.write("\n", 1);
+    }
+    catch (const std::ofstream::failure &)
     {
         ne7ssh::errors()->push(-1, "I/O error while writting to file: %s.", pubKeyFileName);
         return false;
     }
-    fclose(pubKeyFile);
 
     encoder.start_cons(SEQUENCE)
     .encode((size_t)0U)
@@ -200,22 +204,20 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     .end_cons();
     privKeyEncoded = PEM_Code::encode(encoder.get_contents(), "DSA PRIVATE KEY");
 
-    privKeyFile = fopen(privKeyFileName, "w");
+    privKeyFile.open(privKeyFileName);
 
-    if (!privKeyFile)
+    if (privKeyFile.is_open() == false)
     {
         ne7ssh::errors()->push(-1, "Cannot open file where private key is stored. Filename: %s", privKeyFileName);
         return false;
     }
 
-    if (!fwrite(privKeyEncoded.c_str(), (size_t) privKeyEncoded.length(), 1, privKeyFile))
+    privKeyFile.write(privKeyEncoded.c_str(), privKeyEncoded.length());
+    if (privKeyFile.fail() == true)
     {
         ne7ssh::errors()->push(-1, "I/O error while writting to file: %s.", privKeyFileName);
         return false;
     }
-    fclose(privKeyFile);
-
-//  delete dsaGroup;
 
     return true;
 }
