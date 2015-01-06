@@ -639,7 +639,7 @@ const char* ne7ssh::read(int channel)
     catch (const std::system_error &ex)
     {
         s_errs->push(-1, "Unable to get lock %s", ex.what());
-        return false;
+        return NULL;
     }
 
     return NULL;
@@ -673,7 +673,7 @@ void* ne7ssh::readBinary(int channel)
     catch (const std::system_error &ex)
     {
         s_errs->push(-1, "Unable to get lock %s", ex.what());
-        return false;
+        return NULL;
     }
 
     return NULL;
