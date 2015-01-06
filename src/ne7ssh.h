@@ -109,8 +109,11 @@ private:
 
     /**
     * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.
+    * Becuase this class is a singleton, you cannot copy it or assign it.
     */
     ne7ssh();
+    ne7ssh(const ne7ssh&);
+    ne7ssh& operator=(const ne7ssh&);
 
 public:
     static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;

@@ -23,7 +23,7 @@ Ne7sshSftpPacket::Ne7sshSftpPacket () : ne7ssh_string(), _channel(-1)
 {
 }
 
-Ne7sshSftpPacket::Ne7sshSftpPacket (int channel) : ne7ssh_string(), _channel(_channel)
+Ne7sshSftpPacket::Ne7sshSftpPacket (int channel) : ne7ssh_string(), _channel(channel)
 {
 }
 
