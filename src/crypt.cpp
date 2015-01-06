@@ -25,43 +25,12 @@
 
 using namespace Botan;
 
-ne7ssh_crypt::ne7ssh_crypt(ne7ssh_session* _session) : session(_session), kexMethod(DH_GROUP1_SHA1), c2sCryptoMethod(AES128_CBC), s2cCryptoMethod(AES128_CBC), c2sMacMethod(HMAC_MD5), s2cMacMethod(HMAC_MD5), inited(false), encrypt(0), decrypt(0), compress(0), decompress(0), hmacOut(0), hmacIn(0), privKexKey(0), encryptBlock(0), decryptBlock(0)
+ne7ssh_crypt::ne7ssh_crypt(ne7ssh_session* _session) : _session(_session), _kexMethod(DH_GROUP1_SHA1), _c2sCryptoMethod(AES128_CBC), _s2cCryptoMethod(AES128_CBC), _c2sMacMethod(HMAC_MD5), _s2cMacMethod(HMAC_MD5), _inited(false), _encryptBlock(0), _decryptBlock(0)
 {
 }
 
 ne7ssh_crypt::~ne7ssh_crypt()
 {
-    if (encrypt)
-    {
-        delete encrypt;
-    }
-    if (decrypt)
-    {
-        delete decrypt;
-    }
-
-    if (compress)
-    {
-        delete compress;
-    }
-    if (decompress)
-    {
-        delete decompress;
-    }
-
-    if (hmacOut)
-    {
-        delete hmacOut;
-    }
-    if (hmacIn)
-    {
-        delete hmacIn;
-    }
-
-    if (privKexKey)
-    {
-        delete privKexKey;
-    }
 }
 
 bool ne7ssh_crypt::agree(Botan::SecureVector<Botan::byte> &result, const char* local, Botan::SecureVector<Botan::byte> &remote)
@@ -119,16 +88,16 @@ bool ne7ssh_crypt::negotiatedKex(Botan::SecureVector<Botan::byte> &kexAlgo)
 {
     if (!memcmp(kexAlgo.begin(), "diffie-hellman-group1-sha1", kexAlgo.size()))
     {
-        kexMethod = DH_GROUP1_SHA1;
+        _kexMethod = DH_GROUP1_SHA1;
         return true;
     }
     else if (!memcmp(kexAlgo.begin(), "diffie-hellman-group14-sha1", kexAlgo.size()))
     {
-        kexMethod = DH_GROUP14_SHA1;
+        _kexMethod = DH_GROUP14_SHA1;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "KEX algorithm: '%B' not defined.", &kexAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "KEX algorithm: '%B' not defined.", &kexAlgo);
     return false;
 }
 
@@ -136,16 +105,16 @@ bool ne7ssh_crypt::negotiatedHostkey(Botan::SecureVector<Botan::byte> &hostkeyAl
 {
     if (!memcmp(hostkeyAlgo.begin(), "ssh-dss", hostkeyAlgo.size()))
     {
-        hostkeyMethod = SSH_DSS;
+        _hostkeyMethod = SSH_DSS;
         return true;
     }
     else if (!memcmp(hostkeyAlgo.begin(), "ssh-rsa", hostkeyAlgo.size()))
     {
-        hostkeyMethod = SSH_RSA;
+        _hostkeyMethod = SSH_RSA;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "Hostkey algorithm: '%B' not defined.", &hostkeyAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Hostkey algorithm: '%B' not defined.", &hostkeyAlgo);
     return false;
 }
 
@@ -153,41 +122,41 @@ bool ne7ssh_crypt::negotiatedCryptoC2s(Botan::SecureVector<Botan::byte> &cryptoA
 {
     if (!memcmp(cryptoAlgo.begin(), "3des-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = TDES_CBC;
+        _c2sCryptoMethod = TDES_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "aes128-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = AES128_CBC;
+        _c2sCryptoMethod = AES128_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "aes192-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = AES192_CBC;
+        _c2sCryptoMethod = AES192_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "aes256-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = AES256_CBC;
+        _c2sCryptoMethod = AES256_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "blowfish-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = BLOWFISH_CBC;
+        _c2sCryptoMethod = BLOWFISH_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "cast128-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = CAST128_CBC;
+        _c2sCryptoMethod = CAST128_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "twofish-cbc", cryptoAlgo.size()) || !memcmp(cryptoAlgo.begin(), "twofish256-cbc", cryptoAlgo.size()))
     {
-        c2sCryptoMethod = TWOFISH_CBC;
+        _c2sCryptoMethod = TWOFISH_CBC;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "Cryptographic algorithm: '%B' not defined.", &cryptoAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Cryptographic algorithm: '%B' not defined.", &cryptoAlgo);
     return false;
 }
 
@@ -195,41 +164,41 @@ bool ne7ssh_crypt::negotiatedCryptoS2c(Botan::SecureVector<Botan::byte> &cryptoA
 {
     if (!memcmp(cryptoAlgo.begin(), "3des-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = TDES_CBC;
+        _s2cCryptoMethod = TDES_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "aes128-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = AES128_CBC;
+        _s2cCryptoMethod = AES128_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "aes192-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = AES192_CBC;
+        _s2cCryptoMethod = AES192_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "aes256-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = AES256_CBC;
+        _s2cCryptoMethod = AES256_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "blowfish-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = BLOWFISH_CBC;
+        _s2cCryptoMethod = BLOWFISH_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "cast128-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = CAST128_CBC;
+        _s2cCryptoMethod = CAST128_CBC;
         return true;
     }
     else if (!memcmp(cryptoAlgo.begin(), "twofish-cbc", cryptoAlgo.size()) || !memcmp(cryptoAlgo.begin(), "twofish256-cbc", cryptoAlgo.size()))
     {
-        s2cCryptoMethod = TWOFISH_CBC;
+        _s2cCryptoMethod = TWOFISH_CBC;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "Cryptographic method: '%B' not defined.", &cryptoAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Cryptographic method: '%B' not defined.", &cryptoAlgo);
     return false;
 }
 
@@ -237,21 +206,21 @@ bool ne7ssh_crypt::negotiatedMacC2s(Botan::SecureVector<Botan::byte> &macAlgo)
 {
     if (!memcmp(macAlgo.begin(), "hmac-sha1", macAlgo.size()))
     {
-        c2sMacMethod = HMAC_SHA1;
+        _c2sMacMethod = HMAC_SHA1;
         return true;
     }
     else if (!memcmp(macAlgo.begin(), "hmac-md5", macAlgo.size()))
     {
-        c2sMacMethod = HMAC_MD5;
+        _c2sMacMethod = HMAC_MD5;
         return true;
     }
     else if (!memcmp(macAlgo.begin(), "none", macAlgo.size()))
     {
-        c2sMacMethod = HMAC_NONE;
+        _c2sMacMethod = HMAC_NONE;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "HMAC algorithm: '%B' not defined.", &macAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "HMAC algorithm: '%B' not defined.", &macAlgo);
     return false;
 }
 
@@ -259,21 +228,21 @@ bool ne7ssh_crypt::negotiatedMacS2c(Botan::SecureVector<Botan::byte> &macAlgo)
 {
     if (!memcmp(macAlgo.begin(), "hmac-sha1", macAlgo.size()))
     {
-        s2cMacMethod = HMAC_SHA1;
+        _s2cMacMethod = HMAC_SHA1;
         return true;
     }
     else if (!memcmp(macAlgo.begin(), "hmac-md5", macAlgo.size()))
     {
-        s2cMacMethod = HMAC_MD5;
+        _s2cMacMethod = HMAC_MD5;
         return true;
     }
     else if (!memcmp(macAlgo.begin(), "none", macAlgo.size()))
     {
-        s2cMacMethod = HMAC_NONE;
+        _s2cMacMethod = HMAC_NONE;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "HMAC algorithm: '%B' not defined.", &macAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "HMAC algorithm: '%B' not defined.", &macAlgo);
     return false;
 }
 
@@ -281,16 +250,16 @@ bool ne7ssh_crypt::negotiatedCmprsC2s(Botan::SecureVector<Botan::byte> &cmprsAlg
 {
     if (!memcmp(cmprsAlgo.begin(), "none", cmprsAlgo.size()))
     {
-        c2sCmprsMethod = NONE;
+        _c2sCmprsMethod = NONE;
         return true;
     }
     else if (!memcmp(cmprsAlgo.begin(), "zlib", cmprsAlgo.size()))
     {
-        c2sCmprsMethod = ZLIB;
+        _c2sCmprsMethod = ZLIB;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "Compression algorithm: '%B' not defined.", &cmprsAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Compression algorithm: '%B' not defined.", &cmprsAlgo);
     return false;
 }
 
@@ -298,22 +267,22 @@ bool ne7ssh_crypt::negotiatedCmprsS2c(Botan::SecureVector<Botan::byte> &cmprsAlg
 {
     if (!memcmp(cmprsAlgo.begin(), "none", cmprsAlgo.size()))
     {
-        s2cCmprsMethod = NONE;
+        _s2cCmprsMethod = NONE;
         return true;
     }
     else if (!memcmp(cmprsAlgo.begin(), "zlib", cmprsAlgo.size()))
     {
-        s2cCmprsMethod = ZLIB;
+        _s2cCmprsMethod = ZLIB;
         return true;
     }
 
-    ne7ssh::errors()->push(session->getSshChannel(), "Compression algorithm: '%B' not defined.", &cmprsAlgo);
+    ne7ssh::errors()->push(_session->getSshChannel(), "Compression algorithm: '%B' not defined.", &cmprsAlgo);
     return false;
 }
 
 bool ne7ssh_crypt::getKexPublic(Botan::BigInt &publicKey)
 {
-    switch (kexMethod)
+    switch (_kexMethod)
     {
         case DH_GROUP1_SHA1:
             return getDHGroup1Sha1Public(publicKey);
@@ -322,7 +291,7 @@ bool ne7ssh_crypt::getKexPublic(Botan::BigInt &publicKey)
             return getDHGroup14Sha1Public(publicKey);
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Undefined DH Group: '%s'.", kexMethod);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Undefined DH Group: '%s'.", _kexMethod);
             return false;
     }
 }
@@ -331,15 +300,15 @@ bool ne7ssh_crypt::computeH(Botan::SecureVector<Botan::byte> &result, Botan::Sec
 {
     HashFunction* hashIt;
 
-    switch (kexMethod)
+    switch (_kexMethod)
     {
         case DH_GROUP1_SHA1:
         case DH_GROUP14_SHA1:
-            hashIt = get_hash("SHA-1");
+            hashIt = global_state().algorithm_factory().make_hash_function("SHA-1");
             break;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Undefined DH Group: '%s' while computing H.", kexMethod);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Undefined DH Group: '%s' while computing H.", _kexMethod);
             return false;
     }
 
@@ -347,45 +316,45 @@ bool ne7ssh_crypt::computeH(Botan::SecureVector<Botan::byte> &result, Botan::Sec
     {
         return false;
     }
-    H = hashIt->process(val);
-    result = H;
+    _H = hashIt->process(val);
+    result = _H;
     delete (hashIt);
     return true;
 }
 
 bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::SecureVector<Botan::byte> &sig)
 {
-    DSA_PublicKey* dsaKey = 0;
-    RSA_PublicKey* rsaKey = 0;
-    PK_Verifier* verifier = NULL;
+    std::shared_ptr<DSA_PublicKey> dsaKey;
+    std::shared_ptr<RSA_PublicKey> rsaKey;
+    std::unique_ptr<PK_Verifier> verifier;
     ne7ssh_string signature(sig, 0);
     SecureVector<Botan::byte> sigType, sigData;
     bool result = false;
 
-    if (H.empty())
+    if (_H.empty())
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "H was not initialzed.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "H was not initialzed.");
         return false;
     }
 
     if (!signature.getString(sigType))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Signature without type.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Signature without type.");
         return false;
     }
     if (!signature.getString(sigData))
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Signature without data.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Signature without data.");
         return false;
     }
 
-    switch (hostkeyMethod)
+    switch (_hostkeyMethod)
     {
         case SSH_DSS:
             dsaKey = getDSAKey(hostKey);
             if (!dsaKey)
             {
-                ne7ssh::errors()->push(session->getSshChannel(), "DSA key not generated.");
+                ne7ssh::errors()->push(_session->getSshChannel(), "DSA key not generated.");
                 return false;
             }
             break;
@@ -394,27 +363,27 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
             rsaKey = getRSAKey(hostKey);
             if (!rsaKey)
             {
-                ne7ssh::errors()->push(session->getSshChannel(), "RSA key not generated.");
+                ne7ssh::errors()->push(_session->getSshChannel(), "RSA key not generated.");
                 return false;
             }
             break;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Hostkey algorithm: %i not supported.", hostkeyMethod);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Hostkey algorithm: %i not supported.", _hostkeyMethod);
             return false;
     }
 
-    switch (kexMethod)
+    switch (_kexMethod)
     {
         case DH_GROUP1_SHA1:
         case DH_GROUP14_SHA1:
             if (dsaKey)
             {
-                verifier = new PK_Verifier(*dsaKey, "EMSA1(SHA-1)");
+                verifier.reset(new PK_Verifier(*dsaKey, "EMSA1(SHA-1)"));
             }
             else if (rsaKey)
             {
-                verifier = new PK_Verifier(*rsaKey, "EMSA3(SHA-1)");
+                verifier.reset(new PK_Verifier(*rsaKey, "EMSA3(SHA-1)"));
             }
             break;
 
@@ -423,25 +392,19 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
     }
     if (verifier == NULL)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Key Exchange algorithm: %i not supported.", kexMethod);
+        ne7ssh::errors()->push(_session->getSshChannel(), "Key Exchange algorithm: %i not supported.", _kexMethod);
     }
     else
     {
-        result = verifier->verify_message(H, sigData);
-        delete verifier;
+        result = verifier->verify_message(_H, sigData);
+        verifier.reset();
     }
-    if (dsaKey)
-    {
-        delete dsaKey;
-    }
-    if (rsaKey)
-    {
-        delete dsaKey;
-    }
+    dsaKey.reset();
+    rsaKey.reset();
 
     if (result == false)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Failure to verify host signature.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Failure to verify host signature.");
         return false;
     }
     else
@@ -450,12 +413,12 @@ bool ne7ssh_crypt::verifySig(Botan::SecureVector<Botan::byte> &hostKey, Botan::S
     }
 }
 
-DSA_PublicKey* ne7ssh_crypt::getDSAKey(Botan::SecureVector<Botan::byte> &hostKey)
+std::shared_ptr<DSA_PublicKey> ne7ssh_crypt::getDSAKey(Botan::SecureVector<Botan::byte> &hostKey)
 {
     ne7ssh_string hKey;
     SecureVector<Botan::byte> field;
     BigInt p, q, g, y;
-    DSA_PublicKey* pubKey;
+    std::shared_ptr<DSA_PublicKey> pubKey;
 
     hKey.addVector(hostKey);
 
@@ -486,15 +449,16 @@ DSA_PublicKey* ne7ssh_crypt::getDSAKey(Botan::SecureVector<Botan::byte> &hostKey
     }
 
     DL_Group keyDL(p, q, g);
-    pubKey  = new DSA_PublicKey(keyDL, y);
+    pubKey.reset(new DSA_PublicKey(keyDL, y));
     return pubKey;
 }
 
-RSA_PublicKey* ne7ssh_crypt::getRSAKey(Botan::SecureVector<Botan::byte> &hostKey)
+std::shared_ptr<RSA_PublicKey> ne7ssh_crypt::getRSAKey(Botan::SecureVector<Botan::byte> &hostKey)
 {
     ne7ssh_string hKey;
     SecureVector<Botan::byte> field;
     BigInt e, n;
+    std::shared_ptr<RSA_PublicKey> pubKey;
 
     hKey.addVector(hostKey);
 
@@ -515,17 +479,17 @@ RSA_PublicKey* ne7ssh_crypt::getRSAKey(Botan::SecureVector<Botan::byte> &hostKey
     {
         return 0;
     }
-
-    return (new RSA_PublicKey(n, e));
+    pubKey.reset(new RSA_PublicKey(n, e));
+    return pubKey;
 }
 
 bool ne7ssh_crypt::makeKexSecret(Botan::SecureVector<Botan::byte> &result, Botan::BigInt &f)
 {
-    DH_KA_Operation dhop(*privKexKey);
-    byte* buf = new byte[f.bytes()];
-    Botan::BigInt::encode(buf, f);
-    SymmetricKey negotiated = dhop.agree(buf, f.bytes());
-    delete[]buf;
+    DH_KA_Operation dhop(*_privKexKey);
+    std::unique_ptr<byte> buf(new byte[f.bytes()]);
+    Botan::BigInt::encode(buf.get(), f);
+    SymmetricKey negotiated = dhop.agree(buf.get(), f.bytes());
+
     if (!negotiated.length())
     {
         return false;
@@ -533,22 +497,15 @@ bool ne7ssh_crypt::makeKexSecret(Botan::SecureVector<Botan::byte> &result, Botan
 
     BigInt Kint(negotiated.begin(), negotiated.length());
     ne7ssh_string::bn2vector(result, Kint);
-    K = result;
-    delete privKexKey;
-    privKexKey = 0;
+    _K = result;
+    _privKexKey.reset();
     return true;
 }
 
 bool ne7ssh_crypt::getDHGroup1Sha1Public(Botan::BigInt &publicKey)
 {
-#if BOTAN_PRE_15
-    privKexKey = new DH_PrivateKey(get_dl_group("IETF-1024"));
-#elif BOTAN_PRE_18
-    privKexKey = new DH_PrivateKey(DL_Group("modp/ietf/1024"));
-#else
-    privKexKey = new DH_PrivateKey(*ne7ssh::rng, DL_Group("modp/ietf/1024"));
-#endif
-    DH_PublicKey pubKexKey = *privKexKey;
+    _privKexKey.reset(new DH_PrivateKey(*ne7ssh::s_rng, DL_Group("modp/ietf/1024")));
+    DH_PublicKey pubKexKey = *_privKexKey;
 
     publicKey = pubKexKey.get_y();
     if (publicKey.is_zero())
@@ -563,14 +520,8 @@ bool ne7ssh_crypt::getDHGroup1Sha1Public(Botan::BigInt &publicKey)
 
 bool ne7ssh_crypt::getDHGroup14Sha1Public(Botan::BigInt &publicKey)
 {
-#if BOTAN_PRE_15
-    privKexKey = new DH_PrivateKey(get_dl_group("IETF-2048"));
-#elif BOTAN_PRE_18
-    privKexKey = new DH_PrivateKey(DL_Group("modp/ietf/2048"));
-#else
-    privKexKey = new DH_PrivateKey(*ne7ssh::rng, DL_Group("modp/ietf/2048"));
-#endif
-    DH_PublicKey pubKexKey = *privKexKey;
+    _privKexKey.reset(new DH_PrivateKey(*ne7ssh::s_rng, DL_Group("modp/ietf/2048")));
+    DH_PublicKey pubKexKey = *_privKexKey;
 
     publicKey = pubKexKey.get_y();
     if (publicKey.is_zero())
@@ -585,14 +536,14 @@ bool ne7ssh_crypt::getDHGroup14Sha1Public(Botan::BigInt &publicKey)
 
 const char* ne7ssh_crypt::getHashAlgo()
 {
-    switch (kexMethod)
+    switch (_kexMethod)
     {
         case DH_GROUP1_SHA1:
         case DH_GROUP14_SHA1:
             return "SHA-1";
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "DH Group: %i was not defined.", kexMethod);
+            ne7ssh::errors()->push(_session->getSshChannel(), "DH Group: %i was not defined.", _kexMethod);
             return 0;
     }
 }
@@ -623,7 +574,7 @@ const char* ne7ssh_crypt::getCryptAlgo(uint32 crypto)
             return "Twofish";
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "Cryptographic algorithm: %i was not defined.", crypto);
+            ne7ssh::errors()->push(_session->getSshChannel(), "Cryptographic algorithm: %i was not defined.", crypto);
             return 0;
     }
 }
@@ -642,7 +593,7 @@ const char* ne7ssh_crypt::getHmacAlgo(uint32 method)
             return 0;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "HMAC algorithm: %i was not defined.", method);
+            ne7ssh::errors()->push(_session->getSshChannel(), "HMAC algorithm: %i was not defined.", method);
             return 0;
     }
 }
@@ -661,7 +612,7 @@ uint32 ne7ssh_crypt::getMacKeyLen(uint32 method)
             return 0;
 
         default:
-            ne7ssh::errors()->push(session->getSshChannel(), "HMAC algorithm: %i was not defined.", method);
+            ne7ssh::errors()->push(_session->getSshChannel(), "HMAC algorithm: %i was not defined.", method);
             return 0;
     }
 }
@@ -711,27 +662,25 @@ bool ne7ssh_crypt::makeNewKeys()
     const char* algo;
     uint32 key_len, iv_len, macLen;
     SecureVector<Botan::byte> key;
-#if !BOTAN_PRE_18 && !BOTAN_PRE_15
     const Botan::BlockCipher* cipher;
     const Botan::HashFunction* hash_algo;
-#endif
 
-    algo = getCryptAlgo(c2sCryptoMethod);
+    algo = getCryptAlgo(_c2sCryptoMethod);
     key_len = max_keylength_of(algo);
     if (key_len == 0)
     {
         return false;
     }
-    if (c2sCryptoMethod == BLOWFISH_CBC)
+    if (_c2sCryptoMethod == BLOWFISH_CBC)
     {
         key_len = 16;
     }
-    else if (c2sCryptoMethod == TWOFISH_CBC)
+    else if (_c2sCryptoMethod == TWOFISH_CBC)
     {
         key_len = 32;
     }
-    encryptBlock = iv_len = block_size_of(algo);
-    macLen = getMacKeyLen(c2sMacMethod);
+    _encryptBlock = iv_len = block_size_of(algo);
+    macLen = getMacKeyLen(_c2sMacMethod);
     if (!algo)
     {
         return false;
@@ -755,42 +704,34 @@ bool ne7ssh_crypt::makeNewKeys()
     }
     SymmetricKey c2s_mac(key);
 
-#if BOTAN_PRE_18 && !BOTAN_PRE_15
-    encrypt = new Pipe(new CBC_Encryption(algo, "NoPadding", c2s_key, c2s_iv));
-#else
     Algorithm_Factory &af = global_state().algorithm_factory();
     cipher = af.prototype_block_cipher(algo);
-    encrypt = new Pipe(new CBC_Encryption(cipher->clone(), new Null_Padding, c2s_key, c2s_iv));
-#endif
+    _encrypt.reset(new Pipe(new CBC_Encryption(cipher->clone(), new Null_Padding, c2s_key, c2s_iv)));
 
     if (macLen)
     {
-#if BOTAN_PRE_18 && !BOTAN_PRE_15
-        hmacOut = new HMAC(getHmacAlgo(c2sMacMethod));
-#else
-        hash_algo = af.prototype_hash_function(getHmacAlgo(c2sMacMethod));
-        hmacOut = new HMAC(hash_algo->clone());
-#endif
-        hmacOut->set_key(c2s_mac);
+        hash_algo = af.prototype_hash_function(getHmacAlgo(_c2sMacMethod));
+        _hmacOut.reset(new HMAC(hash_algo->clone()));
+        _hmacOut->set_key(c2s_mac);
     }
 //  if (c2sCmprsMethod == ZLIB) compress = new Pipe (new Zlib_Compression(9));
 
-    algo = getCryptAlgo(s2cCryptoMethod);
+    algo = getCryptAlgo(_s2cCryptoMethod);
     key_len = max_keylength_of(algo);
     if (key_len == 0)
     {
         return false;
     }
-    if (s2cCryptoMethod == BLOWFISH_CBC)
+    if (_s2cCryptoMethod == BLOWFISH_CBC)
     {
         key_len = 16;
     }
-    else if (s2cCryptoMethod == TWOFISH_CBC)
+    else if (_s2cCryptoMethod == TWOFISH_CBC)
     {
         key_len = 32;
     }
-    decryptBlock = iv_len = block_size_of(algo);
-    macLen = getMacKeyLen(c2sMacMethod);
+    _decryptBlock = iv_len = block_size_of(algo);
+    macLen = getMacKeyLen(_c2sMacMethod);
     if (!algo)
     {
         return false;
@@ -814,26 +755,18 @@ bool ne7ssh_crypt::makeNewKeys()
     }
     SymmetricKey s2c_mac(key);
 
-#if BOTAN_PRE_18 && !BOTAN_PRE_15
-    decrypt = new Pipe(new CBC_Decryption(algo, "NoPadding", s2c_key, s2c_iv));
-#else
     cipher = af.prototype_block_cipher(algo);
-    decrypt = new Pipe(new CBC_Decryption(cipher->clone(), new Null_Padding, s2c_key, s2c_iv));
-#endif
+    _decrypt.reset(new Pipe(new CBC_Decryption(cipher->clone(), new Null_Padding, s2c_key, s2c_iv)));
 
     if (macLen)
     {
-#if BOTAN_PRE_18 && !BOTAN_PRE_15
-        hmacIn = new HMAC(getHmacAlgo(s2cMacMethod));
-#else
-        hash_algo = af.prototype_hash_function(getHmacAlgo(s2cMacMethod));
-        hmacIn = new HMAC(hash_algo->clone());
-#endif
-        hmacIn->set_key(s2c_mac);
+        hash_algo = af.prototype_hash_function(getHmacAlgo(_s2cMacMethod));
+        _hmacIn.reset(new HMAC(hash_algo->clone()));
+        _hmacIn->set_key(s2c_mac);
     }
 //  if (s2cCmprsMethod == ZLIB) decompress = new Pipe (new Zlib_Decompression);
 
-    inited = true;
+    _inited = true;
     return true;
 }
 
@@ -849,17 +782,19 @@ bool ne7ssh_crypt::compute_key(Botan::SecureVector<Botan::byte>& key, Botan::byt
     {
         return false;
     }
-    hashIt = get_hash(algo);
+
+    hashIt = global_state().algorithm_factory().make_hash_function(algo);
+
     if (!hashIt)
     {
-        ne7ssh::errors()->push(session->getSshChannel(), "Undefined HASH algorithm encountered while computing the key.");
+        ne7ssh::errors()->push(_session->getSshChannel(), "Undefined HASH algorithm encountered while computing the key.");
         return false;
     }
 
-    hashBytes.addVectorField(K);
-    hashBytes.addVector(H);
+    hashBytes.addVectorField(_K);
+    hashBytes.addVector(_H);
     hashBytes.addChar(ID);
-    hashBytes.addVector(session->getSessionID());
+    hashBytes.addVector(_session->getSessionID());
 
     hash = hashIt->process(hashBytes.value());
     newKey = hash;
@@ -868,8 +803,8 @@ bool ne7ssh_crypt::compute_key(Botan::SecureVector<Botan::byte>& key, Botan::byt
     while (len < nBytes)
     {
         hashBytes.clear();
-        hashBytes.addVectorField(K);
-        hashBytes.addVector(H);
+        hashBytes.addVectorField(_K);
+        hashBytes.addVector(_H);
         hashBytes.addVector(newKey);
         hash = hashIt->process(hashBytes.value());
         newKey += hash;
@@ -885,17 +820,17 @@ bool ne7ssh_crypt::encryptPacket(Botan::SecureVector<Botan::byte> &crypted, Bota
     SecureVector<Botan::byte> macStr;
     uint32 nSeq = (uint32)htonl(seq);
 
-    encrypt->start_msg();
-    encrypt->write(packet.begin(), packet.size());
-    encrypt->end_msg();
+    _encrypt->start_msg();
+    _encrypt->write(packet.begin(), packet.size());
+    _encrypt->end_msg();
 //  encrypt->process_msg (packet);
-    crypted = encrypt->read_all(encrypt->message_count() - 1);
+    crypted = _encrypt->read_all(_encrypt->message_count() - 1);
 
-    if (hmacOut)
+    if (_hmacOut)
     {
         macStr = SecureVector<Botan::byte>((Botan::byte*)&nSeq, 4);
         macStr += packet;
-        hmac = hmacOut->process(macStr);
+        hmac = _hmacOut->process(macStr);
     }
 
     return true;
@@ -905,9 +840,9 @@ bool ne7ssh_crypt::decryptPacket(Botan::SecureVector<Botan::byte> &decrypted, Bo
 {
     uint32 pLen = packet.size();
 
-    if (len % decryptBlock)
+    if (len % _decryptBlock)
     {
-        len = len + (len % decryptBlock);
+        len = len + (len % _decryptBlock);
     }
 
     if (len > pLen)
@@ -915,8 +850,8 @@ bool ne7ssh_crypt::decryptPacket(Botan::SecureVector<Botan::byte> &decrypted, Bo
         len = pLen;
     }
 
-    decrypt->process_msg(packet.begin(), len);
-    decrypted = decrypt->read_all(decrypt->message_count() - 1);
+    _decrypt->process_msg(packet.begin(), len);
+    decrypted = _decrypt->read_all(_decrypt->message_count() - 1);
 
     return true;
 }
@@ -924,28 +859,28 @@ bool ne7ssh_crypt::decryptPacket(Botan::SecureVector<Botan::byte> &decrypted, Bo
 void ne7ssh_crypt::compressData(Botan::SecureVector<Botan::byte> &buffer)
 {
     SecureVector<Botan::byte> tmpVar;
-    if (!compress)
+    if (!_compress)
     {
         return;
     }
 
     tmpVar.swap(buffer);
-    compress->process_msg(tmpVar);
-    tmpVar = compress->read_all(compress->message_count() - 1);
+    _compress->process_msg(tmpVar);
+    tmpVar = _compress->read_all(_compress->message_count() - 1);
     buffer = tmpVar;
 }
 
 void ne7ssh_crypt::decompressData(Botan::SecureVector<Botan::byte> &buffer)
 {
     SecureVector<Botan::byte> tmpVar;
-    if (!decompress)
+    if (!_decompress)
     {
         return;
     }
 
     tmpVar.swap(buffer);
-    decompress->process_msg(tmpVar);
-    tmpVar = decompress->read_all(compress->message_count() - 1);
+    _decompress->process_msg(tmpVar);
+    tmpVar = _decompress->read_all(_decompress->message_count() - 1);
     buffer = tmpVar;
 }
 
@@ -954,11 +889,11 @@ void ne7ssh_crypt::computeMac(Botan::SecureVector<Botan::byte> &hmac, Botan::Sec
     SecureVector<Botan::byte> macStr;
     uint32 nSeq = htonl(seq);
 
-    if (hmacIn)
+    if (_hmacIn)
     {
         macStr = SecureVector<Botan::byte>((Botan::byte*)&nSeq, 4);
         macStr += packet;
-        hmac = hmacIn->process(macStr);
+        hmac = _hmacIn->process(macStr);
     }
     else
     {

@@ -34,7 +34,7 @@
 
 #include <botan/cbc.h>
 #include <botan/hmac.h>
-
+#include <memory>
 #include "ne7ssh_types.h"
 #include "ne7ssh_string.h"
 
@@ -46,40 +46,41 @@ class ne7ssh_session;
 class ne7ssh_crypt
 {
 private:
-    ne7ssh_session* session;
+    ne7ssh_session* _session;
 
     enum kexMethods { DH_GROUP1_SHA1, DH_GROUP14_SHA1 };
-    uint32 kexMethod;
+    uint32 _kexMethod;
 
     enum hostkeyMethods { SSH_DSS, SSH_RSA };
-    uint32 hostkeyMethod;
+    uint32 _hostkeyMethod;
 
     enum cryptoMethods { TDES_CBC, AES128_CBC, AES192_CBC, AES256_CBC, BLOWFISH_CBC, CAST128_CBC, TWOFISH_CBC };
-    uint32 c2sCryptoMethod;
-    uint32 s2cCryptoMethod;
+    uint32 _c2sCryptoMethod;
+    uint32 _s2cCryptoMethod;
 
     enum macMethods { HMAC_SHA1, HMAC_MD5, HMAC_NONE };
-    uint32 c2sMacMethod;
-    uint32 s2cMacMethod;
+    uint32 _c2sMacMethod;
+    uint32 _s2cMacMethod;
 
     enum cmprsMethods { NONE, ZLIB };
-    uint32 c2sCmprsMethod;
-    uint32 s2cCmprsMethod;
+    uint32 _c2sCmprsMethod;
+    uint32 _s2cCmprsMethod;
 
-    bool inited;
-    Botan::SecureVector<Botan::byte> H;
-    Botan::SecureVector<Botan::byte> K;
+    bool _inited;
+    Botan::SecureVector<Botan::byte> _H;
+    Botan::SecureVector<Botan::byte> _K;
 
-    Botan::Pipe* encrypt;
-    Botan::Pipe* decrypt;
-    Botan::Pipe* compress;
-    Botan::Pipe* decompress;
-    Botan::HMAC* hmacOut, * hmacIn;
+    std::unique_ptr<Botan::Pipe> _encrypt;
+    std::unique_ptr<Botan::Pipe> _decrypt;
+    std::unique_ptr<Botan::Pipe> _compress;
+    std::unique_ptr<Botan::Pipe> _decompress;
+    std::unique_ptr<Botan::HMAC> _hmacOut;
+    std::unique_ptr<Botan::HMAC> _hmacIn;
 
-    Botan::DH_PrivateKey* privKexKey;
+    std::unique_ptr<Botan::DH_PrivateKey> _privKexKey;
 
-    uint32 encryptBlock;
-    uint32 decryptBlock;
+    uint32 _encryptBlock;
+    uint32 _decryptBlock;
 
     /**
      * Generates a new Public Key, based on Diffie Helman Group1, SHA1 standard.
@@ -100,14 +101,14 @@ private:
      * @param hostKey Reference to vector containing host key received from a server.
      * @return Returns newly generated DSA public Key. If host key vector is trash, more likely application will be aborted within Botan library.
      */
-    Botan::DSA_PublicKey* getDSAKey(Botan::SecureVector<Botan::byte>& hostKey);
+    std::shared_ptr<Botan::DSA_PublicKey> getDSAKey(Botan::SecureVector<Botan::byte>& hostKey);
 
     /**
     * Generates a new RSA public Key from n and e values extracted from the host key received from the server.
     * @param hostKey Reference to a vector containing host key.
     * @return Returns newly generated ESA public Key. If the hostkey is trash, more likely application will abort within Botan library.
     */
-    Botan::RSA_PublicKey* getRSAKey(Botan::SecureVector<Botan::byte> &hostKey);
+    std::shared_ptr<Botan::RSA_PublicKey> getRSAKey(Botan::SecureVector<Botan::byte> &hostKey);
 
     /**
      * Returns a string represenation of negotiated one way hash algorithm. For DH1_GROUP1_SHA1, "SHA-1" will be returned.
@@ -176,7 +177,7 @@ public:
      */
     bool isInited()
     {
-        return inited;
+        return _inited;
     }
 
     /**
@@ -185,7 +186,7 @@ public:
      */
     uint32 getEncryptBlock()
     {
-        return encryptBlock;
+        return _encryptBlock;
     }
 
     /**
@@ -194,7 +195,7 @@ public:
      */
     uint32 getDecryptBlock()
     {
-        return decryptBlock;
+        return _decryptBlock;
     }
 
     /**
@@ -203,7 +204,7 @@ public:
      */
     uint32 getMacOutLen()
     {
-        return getMacDigestLen(c2sMacMethod);
+        return getMacDigestLen(_c2sMacMethod);
     }
 
     /**
@@ -212,7 +213,7 @@ public:
      */
     uint32 getMacInLen()
     {
-        return getMacDigestLen(s2cMacMethod);
+        return getMacDigestLen(_s2cMacMethod);
     }
 
     /**
@@ -363,7 +364,7 @@ public:
      */
     bool isCompressed()
     {
-        if (decompress)
+        if (_decompress)
         {
             return true;
         }

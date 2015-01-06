@@ -69,11 +69,7 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
         return false;
     }
 
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    rsaPrivKey = new RSA_PrivateKey(keySize);
-#else
-    rsaPrivKey = new RSA_PrivateKey(*ne7ssh::rng, keySize);
-#endif
+    rsaPrivKey = new RSA_PrivateKey(*ne7ssh::s_rng, keySize);
     privKeyFile = fopen(privKeyFileName, "w");
 
     e = rsaPrivKey->get_e();
@@ -118,21 +114,6 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
 
     fclose(pubKeyFile);
 
-#if (BOTAN_PRE_15)
-    encoder.start_sequence();
-    DER::encode(encoder, 0U);
-    DER::encode(encoder, n);
-    DER::encode(encoder, e);
-    DER::encode(encoder, d);
-    DER::encode(encoder, p);
-    DER::encode(encoder, q);
-    DER::encode(encoder, dmp1);
-    DER::encode(encoder, dmq1);
-    DER::encode(encoder, iqmp);
-    encoder.end_sequence();
-
-    privKeyEncoded = PEM_Code::encode(encoder.get_contents(), "RSA PRIVATE KEY");
-#else
     privKeyEncoded = PEM_Code::encode(
         DER_Encoder().start_cons(SEQUENCE)
         .encode((size_t)0U)
@@ -146,7 +127,6 @@ bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName,
         .encode(iqmp)
         .end_cons()
         .get_contents(), "RSA PRIVATE KEY");
-#endif
 
     if (!privKeyFile)
     {
@@ -181,14 +161,8 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
         return false;
     }
 
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    DL_Group dsaGroup(keySize, DL_Group::DSA_Kosherizer);
-    DSA_PrivateKey privDsaKey(dsaGroup);
-#else
-    DL_Group dsaGroup(*ne7ssh::rng, Botan::DL_Group::DSA_Kosherizer, keySize);
-    DSA_PrivateKey privDsaKey(*ne7ssh::rng, dsaGroup);
-#endif
-
+    DL_Group dsaGroup(*ne7ssh::s_rng, Botan::DL_Group::DSA_Kosherizer, keySize);
+    DSA_PrivateKey privDsaKey(*ne7ssh::s_rng, dsaGroup);
     DSA_PublicKey pubDsaKey = privDsaKey;
 
     p = dsaGroup.get_p();
@@ -227,16 +201,6 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     }
     fclose(pubKeyFile);
 
-#if BOTAN_PRE_15
-    encoder.start_sequence();
-    DER::encode(encoder, 0U);
-    DER::encode(encoder, p);
-    DER::encode(encoder, q);
-    DER::encode(encoder, g);
-    DER::encode(encoder, y);
-    DER::encode(encoder, x);
-    encoder.end_sequence();
-#else
     encoder.start_cons(SEQUENCE)
     .encode((size_t)0U)
     .encode(p)
@@ -245,7 +209,6 @@ bool ne7ssh_keys::generateDSAKeys(const char* fqdn, const char* privKeyFileName,
     .encode(y)
     .encode(x)
     .end_cons();
-#endif
     privKeyEncoded = PEM_Code::encode(encoder.get_contents(), "DSA PRIVATE KEY");
 
     privKeyFile = fopen(privKeyFileName, "w");
@@ -301,11 +264,7 @@ SecureVector<Botan::byte> ne7ssh_keys::generateDSASignature(Botan::SecureVector<
     }
 
     PK_Signer* DSASigner = new PK_Signer(*dsaPrivateKey, "EMSA1(SHA-1)");
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    sigRaw = DSASigner->sign_message(sigData.value());
-#else
-    sigRaw = DSASigner->sign_message(sigData.value(), *ne7ssh::rng);
-#endif
+    sigRaw = DSASigner->sign_message(sigData.value(), *ne7ssh::s_rng);
 
     if (!sigRaw.size())
     {
@@ -341,11 +300,7 @@ SecureVector<Botan::byte> ne7ssh_keys::generateRSASignature(Botan::SecureVector<
     }
 
     PK_Signer* RSASigner = new PK_Signer(*rsaPrivateKey, "EMSA3(SHA-1)");
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    sigRaw = RSASigner->sign_message(sigData.value());
-#else
-    sigRaw = RSASigner->sign_message(sigData.value(), *ne7ssh::rng);
-#endif
+    sigRaw = RSASigner->sign_message(sigData.value(), *ne7ssh::s_rng);
     if (!sigRaw.size())
     {
         ne7ssh::errors()->push(-1, "Failure while generating RSA signature.");
@@ -438,13 +393,8 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
 
     BER_Decoder decoder(keyDataRaw);
 
-#if BOTAN_PRE_15
-    BER_Decoder sequence = BER::get_subsequence(decoder);
-    BER::decode(sequence, version);
-#else
     BER_Decoder sequence = decoder.start_cons(SEQUENCE);
     sequence.decode(version);
-#endif
 
     if (version)
     {
@@ -452,19 +402,11 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
         return false;
     }
 
-#if BOTAN_PRE_15
-    BER::decode(sequence, p);
-    BER::decode(sequence, q);
-    BER::decode(sequence, g);
-    BER::decode(sequence, y);
-    BER::decode(sequence, x);
-#else
     sequence.decode(p);
     sequence.decode(q);
     sequence.decode(g);
     sequence.decode(y);
     sequence.decode(x);
-#endif
 
     sequence.discard_remaining();
     sequence.verify_end();
@@ -477,11 +419,7 @@ bool ne7ssh_keys::getDSAKeys(char* buffer, uint32 size)
 
     DL_Group dsaGroup(p, q, g);
 
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    dsaPrivateKey = new DSA_PrivateKey(dsaGroup, x);
-#else
-    dsaPrivateKey = new DSA_PrivateKey(*ne7ssh::rng, dsaGroup, x);
-#endif
+    dsaPrivateKey = new DSA_PrivateKey(*ne7ssh::s_rng, dsaGroup, x);
     publicKeyBlob.clear();
     publicKeyBlob.addString("ssh-dss");
     publicKeyBlob.addBigInt(p);
@@ -506,13 +444,8 @@ bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
 
     BER_Decoder decoder(keyDataRaw);
 
-#if BOTAN_PRE_15
-    BER_Decoder sequence = BER::get_subsequence(decoder);
-    BER::decode(sequence, version);
-#else
     BER_Decoder sequence = decoder.start_cons(SEQUENCE);
     sequence.decode(version);
-#endif
 
     if (version)
     {
@@ -520,19 +453,11 @@ bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
         return false;
     }
 
-#if BOTAN_PRE_15
-    BER::decode(sequence, n);
-    BER::decode(sequence, e);
-    BER::decode(sequence, d);
-    BER::decode(sequence, p);
-    BER::decode(sequence, q);
-#else
     sequence.decode(n);
     sequence.decode(e);
     sequence.decode(d);
     sequence.decode(p);
     sequence.decode(q);
-#endif
 
     sequence.discard_remaining();
     sequence.verify_end();
@@ -543,12 +468,7 @@ bool ne7ssh_keys::getRSAKeys(char* buffer, uint32 size)
         return false;
     }
 
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    rsaPrivateKey = new RSA_PrivateKey(p, q, e, d, n);
-#else
-    rsaPrivateKey = new RSA_PrivateKey(*ne7ssh::rng, p, q, e, d, n);
-#endif
-
+    rsaPrivateKey = new RSA_PrivateKey(*ne7ssh::s_rng, p, q, e, d, n);
     publicKeyBlob.clear();
     publicKeyBlob.addString("ssh-rsa");
     publicKeyBlob.addBigInt(e);

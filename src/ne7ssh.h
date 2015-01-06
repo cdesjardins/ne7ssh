@@ -26,13 +26,8 @@
 #   error Unsupported Botan Version
 #endif
 
-#define BOTAN_PRE_15 (BOTAN_VERSION_MINOR < 5)
-#define BOTAN_PRE_18 (BOTAN_VERSION_MINOR < 8)
-
-#if !BOTAN_PRE_18 && !BOTAN_PRE_15
 # include <botan/auto_rng.h>
 # include <botan/rng.h>
-#endif
 
 #include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
@@ -91,11 +86,10 @@ class SSH_EXPORT ne7ssh
 {
 private:
 
-    static std::recursive_mutex _mutex;
-    Botan::LibraryInitializer* init;
+    static std::recursive_mutex s_mutex;
+    std::unique_ptr<Botan::LibraryInitializer> _init;
     std::vector<std::shared_ptr<ne7ssh_connection> > _connections;
-    volatile static bool running;
-    static bool selectActive;
+    volatile static bool s_running;
 
     /**
      * Send / Receive thread.
@@ -110,14 +104,11 @@ private:
      */
     uint32 getChannelNo();
     std::thread _selectThread;
-    bool connected;
 
-    static Ne7sshError* errs;
+    static Ne7sshError* s_errs;
 
 public:
-#if !BOTAN_PRE_18 && !BOTAN_PRE_15
-    static Botan::RandomNumberGenerator * rng;
-#endif
+    static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;
     static const char* SSH_VERSION;
     static const char* KEX_ALGORITHMS;
     static const char* HOSTKEY_ALGORITHMS;
@@ -265,8 +256,8 @@ class Ne7sshSftp;
 class SSH_EXPORT Ne7SftpSubsystem
 {
 private:
-    bool inited;
-    Ne7sshSftp* sftp;
+    bool _inited;
+    Ne7sshSftp* _sftp;
 
 /**
  * Pushes and error to the error buffer, if this subsystem has not been initialized before usage.

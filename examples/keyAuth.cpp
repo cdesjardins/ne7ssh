@@ -14,12 +14,12 @@
 #include <ne7ssh.h>
 #include <iostream>
 
-void reportError(const std::string &tag, ne7ssh* ssh)
+void reportError(const std::string &tag, Ne7sshError* errors)
 {
     std::string errmsg;
     do
     {
-        errmsg = ssh->errors()->pop();
+        errmsg = errors->pop();
         if (errmsg.size() > 0)
         {
             std::cerr << tag << " failed with last error: " << errmsg << std::endl;
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
     channel1 = _ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        reportError("Connection", _ssh);
+        reportError("Connection", _ssh->errors());
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds.
     if (!_ssh->waitFor(channel1, "$", 5))
     {
-        reportError("Wait for prompt", _ssh);
+        reportError("Wait for prompt", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
     // Send "ls" command.
     if (!_ssh->send("ls\n", channel1))
     {
-        reportError("ls", _ssh);
+        reportError("ls", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds
     if (!_ssh->waitFor(channel1, "$", 5))
     {
-        reportError("Wait for ls", _ssh);
+        reportError("Wait for ls", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 
     if (!result)
     {
-        reportError("Read", _ssh);
+        reportError("Read", _ssh->errors());
     }
     else
     {

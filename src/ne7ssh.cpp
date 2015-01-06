@@ -27,11 +27,9 @@ using namespace Botan;
 using namespace std;
 
 const char* ne7ssh::SSH_VERSION = "SSH-2.0-NetSieben_1.3.2";
-Ne7sshError* ne7ssh::errs = NULL;
+Ne7sshError* ne7ssh::s_errs = NULL;
 
-#if !BOTAN_PRE_18 && !BOTAN_PRE_15
-RandomNumberGenerator* ne7ssh::rng = NULL;
-#endif
+std::unique_ptr<RandomNumberGenerator> ne7ssh::s_rng = NULL;
 
 #ifdef _DEMO_BUILD
 const char* ne7ssh::MAC_ALGORITHMS = "none";
@@ -48,9 +46,8 @@ const char* ne7ssh::HOSTKEY_ALGORITHMS = "ssh-dss,ssh-rsa";
 const char* ne7ssh::COMPRESSION_ALGORITHMS = "none";
 std::string ne7ssh::PREFERED_CIPHER;
 std::string ne7ssh::PREFERED_MAC;
-std::recursive_mutex ne7ssh::_mutex;
-volatile bool ne7ssh::running = false;
-bool ne7ssh::selectActive = true;
+std::recursive_mutex ne7ssh::s_mutex;
+volatile bool ne7ssh::s_running = false;
 
 class Locking_AutoSeeded_RNG : public Botan::RandomNumberGenerator
 {
@@ -107,19 +104,17 @@ private:
 
 ne7ssh::ne7ssh()
 {
-    errs = new Ne7sshError();
-    if (ne7ssh::running)
+    s_errs = new Ne7sshError();
+    if (ne7ssh::s_running)
     {
-        errs->push(-1, "Cannot initialize more than more instance of ne7ssh class within the same application. Aborting.");
+        s_errs->push(-1, "Cannot initialize more than more instance of ne7ssh class within the same application. Aborting.");
         // FIXME: throw exception
         return;
     }
-    init = new LibraryInitializer("thread_safe");
-    ne7ssh::running = true;
+    _init.reset(new LibraryInitializer("thread_safe"));
+    ne7ssh::s_running = true;
 
-#if !BOTAN_PRE_18 && !BOTAN_PRE_15
-    ne7ssh::rng = new Locking_AutoSeeded_RNG();
-#endif
+    ne7ssh::s_rng.reset(new Locking_AutoSeeded_RNG());
 
     // FIXME: Dont start threads in constructors...
     // and handle exceptions
@@ -130,10 +125,10 @@ ne7ssh::~ne7ssh()
 {
     uint32 i;
 
-    ne7ssh::running = false;
+    ne7ssh::s_running = false;
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         for (i = 0; i < _connections.size(); i++)
         {
             close(i);
@@ -141,7 +136,7 @@ ne7ssh::~ne7ssh()
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
     }
     _selectThread.join();
 
@@ -149,20 +144,13 @@ ne7ssh::~ne7ssh()
 
     ne7ssh::PREFERED_CIPHER.clear();
     ne7ssh::PREFERED_MAC.clear();
-    if (errs)
+    if (s_errs)
     {
-        delete (errs);
-        errs = 0;
+        delete (s_errs);
+        s_errs = 0;
     }
-#if !BOTAN_PRE_18 && !BOTAN_PRE_15
-    if (ne7ssh::rng)
-    {
-        delete (rng);
-        rng = 0;
-    }
-#endif
-
-    delete init;
+    ne7ssh::s_rng.reset();
+    _init.reset();
 }
 
 void ne7ssh::selectThread(void* initData)
@@ -176,13 +164,13 @@ void ne7ssh::selectThread(void* initData)
     bool cmdOrShell = false;
     bool fdIsSet;
 
-    while (running)
+    while (s_running)
     {
         try
         {
             fdIsSet = false;
             rfds = 0;
-            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            std::unique_lock<std::recursive_mutex> lock(s_mutex);
             for (i = 0; i < _ssh->_connections.size(); i++)
             {
                 if (_ssh->_connections[i]->isOpen() && _ssh->_connections[i]->data2Send() && !_ssh->_connections[i]->isSftpActive())
@@ -223,7 +211,7 @@ void ne7ssh::selectThread(void* initData)
         }
         catch (const std::system_error &ex)
         {
-            errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
+            s_errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
         }
 
         if (fdIsSet)
@@ -243,13 +231,13 @@ void ne7ssh::selectThread(void* initData)
         }
         if (status == -1)
         {
-            errs->push(-1, "Error within select thread.");
+            s_errs->push(-1, "Error within select thread.");
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
         try
         {
-            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            std::unique_lock<std::recursive_mutex> lock(s_mutex);
 
             for (i = 0; i < _ssh->_connections.size(); i++)
             {
@@ -261,7 +249,7 @@ void ne7ssh::selectThread(void* initData)
         }
         catch (const std::system_error &ex)
         {
-            errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
+            s_errs->push(-1, "Unable to get lock in selectThread %s.", ex.what());
         }
     }
 }
@@ -275,14 +263,14 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
     std::shared_ptr<ne7ssh_connection> con(new ne7ssh_connection());
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         _connections.push_back(con);
         channelID = getChannelNo();
         con->setChannelNo(channelID);
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock in connectWithPassword %s.", ex.what());
+        s_errs->push(-1, "Unable to get lock in connectWithPassword %s.", ex.what());
         return -1;
     }
 
@@ -292,7 +280,7 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
     {
         try
         {
-            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            std::unique_lock<std::recursive_mutex> lock(s_mutex);
             for (z = 0; z < _connections.size(); z++)
             {
                 if (_connections[z] == con)
@@ -310,7 +298,7 @@ int ne7ssh::connectWithPassword(const char* host, const short port, const char* 
         }
         catch (const std::system_error &ex)
         {
-            errs->push(-1, "Unable to get lock in connectWithPassword %s.", ex.what());
+            s_errs->push(-1, "Unable to get lock in connectWithPassword %s.", ex.what());
             return -1;
         }
     }
@@ -326,14 +314,14 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
     std::shared_ptr<ne7ssh_connection> con(new ne7ssh_connection());
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         _connections.push_back(con);
         channelID = getChannelNo();
         con->setChannelNo(channelID);
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock in connectWithKey %s.", ex.what());
+        s_errs->push(-1, "Unable to get lock in connectWithKey %s.", ex.what());
         return -1;
     }
 
@@ -343,7 +331,7 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
     {
         try
         {
-            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            std::unique_lock<std::recursive_mutex> lock(s_mutex);
             for (z = 0; z < _connections.size(); z++)
             {
                 if (_connections[z] == con)
@@ -361,7 +349,7 @@ int ne7ssh::connectWithKey(const char* host, const short port, const char* usern
         }
         catch (const std::system_error &ex)
         {
-            errs->push(-1, "Unable to get lock in connectWithKey %s.", ex.what());
+            s_errs->push(-1, "Unable to get lock in connectWithKey %s.", ex.what());
             return -1;
         }
     }
@@ -373,7 +361,7 @@ bool ne7ssh::send(const char* data, int channel)
     uint32 i;
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         for (i = 0; i < _connections.size(); i++)
         {
             if (channel == _connections[i]->getChannelNo())
@@ -385,10 +373,10 @@ bool ne7ssh::send(const char* data, int channel)
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
-    errs->push(-1, "Bad channel: %i specified for sending.", channel);
+    s_errs->push(-1, "Bad channel: %i specified for sending.", channel);
     return false;
 }
 
@@ -399,7 +387,7 @@ bool ne7ssh::initSftp(Ne7SftpSubsystem& _sftp, int channel)
 
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         for (i = 0; i < _connections.size(); i++)
         {
             if (channel == _connections[i]->getChannelNo())
@@ -420,11 +408,11 @@ bool ne7ssh::initSftp(Ne7SftpSubsystem& _sftp, int channel)
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
 
-    errs->push(-1, "Bad channel: %i specified. Cannot initialize SFTP subsystem.", channel);
+    s_errs->push(-1, "Bad channel: %i specified. Cannot initialize SFTP subsystem.", channel);
     return false;
 }
 
@@ -440,7 +428,7 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
     }
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         for (i = 0; i < _connections.size(); i++)
         {
             if (channel == _connections[i]->getChannelNo())
@@ -464,14 +452,14 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
                         }
                         if (i == _connections.size())
                         {
-                            errs->push(-1, "Bad channel: %i specified for sending.", channel);
+                            s_errs->push(-1, "Bad channel: %i specified for sending.", channel);
                             return false;
                         }
                         if (!_connections[i]->getCmdComplete())
                         {
-                            _mutex.unlock();
+                            s_mutex.unlock();
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                            _mutex.lock();
+                            s_mutex.lock();
                         }
                     }
                 }
@@ -488,14 +476,14 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
                         }
                         if (i == _connections.size())
                         {
-                            errs->push(-1, "Bad channel: %i specified for sending.", channel);
+                            s_errs->push(-1, "Bad channel: %i specified for sending.", channel);
                             return false;
                         }
                         if (!_connections[i]->getCmdComplete())
                         {
-                            _mutex.unlock();
+                            s_mutex.unlock();
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                            _mutex.lock();
+                            s_mutex.lock();
                             if (!cutoff)
                             {
                                 continue;
@@ -513,10 +501,10 @@ bool ne7ssh::sendCmd(const char* cmd, int channel, int timeout)
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
-    errs->push(-1, "Bad channel: %i specified for sending.", channel);
+    s_errs->push(-1, "Bad channel: %i specified for sending.", channel);
     return false;
 }
 
@@ -527,12 +515,12 @@ bool ne7ssh::close(int channel)
 
     if (channel == -1)
     {
-        errs->push(-1, "Bad channel: %i specified for closing.", channel);
+        s_errs->push(-1, "Bad channel: %i specified for closing.", channel);
         return false;
     }
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         for (i = 0; i < _connections.size(); i++)
         {
             if (channel == _connections[i]->getChannelNo())
@@ -540,11 +528,11 @@ bool ne7ssh::close(int channel)
                 status = _connections[i]->sendClose();
             }
         }
-        errs->deleteChannel(channel);
+        s_errs->deleteChannel(channel);
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
 
@@ -567,7 +555,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
 
     if (channel == -1)
     {
-        errs->push(-1, "Bad channel: %i specified for waiting.", channel);
+        s_errs->push(-1, "Bad channel: %i specified for waiting.", channel);
         return false;
     }
 
@@ -577,7 +565,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
     {
         try
         {
-            std::unique_lock<std::recursive_mutex> lock(_mutex);
+            std::unique_lock<std::recursive_mutex> lock(s_mutex);
             buffer = read(channel);
             if (buffer)
             {
@@ -606,7 +594,7 @@ bool ne7ssh::waitFor(int channel, const char* str, uint32 timeSec)
         }
         catch (const std::system_error &ex)
         {
-            errs->push(-1, "Unable to get lock %s", ex.what());
+            s_errs->push(-1, "Unable to get lock %s", ex.what());
             return false;
         }
 
@@ -630,12 +618,12 @@ const char* ne7ssh::read(int channel)
 
     if (channel == -1)
     {
-        errs->push(-1, "Bad channel: %i specified for reading.", channel);
+        s_errs->push(-1, "Bad channel: %i specified for reading.", channel);
         return NULL;
     }
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
         for (i = 0; i < _connections.size(); i++)
         {
             if (channel == _connections[i]->getChannelNo())
@@ -650,7 +638,7 @@ const char* ne7ssh::read(int channel)
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
 
@@ -664,12 +652,12 @@ void* ne7ssh::readBinary(int channel)
 
     if (channel == -1)
     {
-        errs->push(-1, "Bad channel: %i specified for reading.", channel);
+        s_errs->push(-1, "Bad channel: %i specified for reading.", channel);
         return NULL;
     }
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex, std::defer_lock);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex, std::defer_lock);
         for (i = 0; i < _connections.size(); i++)
         {
             if (channel == _connections[i]->getChannelNo())
@@ -684,7 +672,7 @@ void* ne7ssh::readBinary(int channel)
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
 
@@ -697,7 +685,7 @@ int ne7ssh::getReceivedSize(int channel)
     int size;
     try
     {
-        std::unique_lock<std::recursive_mutex> lock(_mutex);
+        std::unique_lock<std::recursive_mutex> lock(s_mutex);
 
         for (i = 0; i < _connections.size(); i++)
         {
@@ -717,7 +705,7 @@ int ne7ssh::getReceivedSize(int channel)
     }
     catch (const std::system_error &ex)
     {
-        errs->push(-1, "Unable to get lock %s", ex.what());
+        s_errs->push(-1, "Unable to get lock %s", ex.what());
         return false;
     }
 
@@ -751,7 +739,7 @@ uint32 ne7ssh::getChannelNo()
 
     if (channelID == 0x7FFFFFFF)
     {
-        errs->push(-1, "Maximum theoretical channel count reached!");
+        s_errs->push(-1, "Maximum theoretical channel count reached!");
         return 0;
     }
     else
@@ -775,7 +763,7 @@ void ne7ssh::setOptions(const char* prefCipher, const char* prefHmac)
 
 SSH_EXPORT Ne7sshError* ne7ssh::errors()
 {
-    return errs;
+    return s_errs;
 }
 
 bool ne7ssh::generateKeyPair(const char* type, const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize)
@@ -816,16 +804,16 @@ bool ne7ssh::generateKeyPair(const char* type, const char* fqdn, const char* pri
             }
 
         default:
-            errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
+            s_errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
     }
     return false;
 }
 
-Ne7SftpSubsystem::Ne7SftpSubsystem () : inited(false), sftp(0)
+Ne7SftpSubsystem::Ne7SftpSubsystem () : _inited(false), _sftp(0)
 {
 }
 
-Ne7SftpSubsystem::Ne7SftpSubsystem (Ne7sshSftp* _sftp) : inited(true), sftp((Ne7sshSftp*)_sftp)
+Ne7SftpSubsystem::Ne7SftpSubsystem (Ne7sshSftp* _sftp) : _inited(true), _sftp((Ne7sshSftp*)_sftp)
 {
 }
 
@@ -835,57 +823,57 @@ Ne7SftpSubsystem::~Ne7SftpSubsystem ()
 
 bool Ne7SftpSubsystem::setTimeout(uint32 _timeout)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    sftp->setTimeout(_timeout);
+    _sftp->setTimeout(_timeout);
     return true;
 }
 
 uint32 Ne7SftpSubsystem::openFile(const char* filename, uint8 mode)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->openFile(filename, mode);
+    return _sftp->openFile(filename, mode);
 }
 
 uint32 Ne7SftpSubsystem::openDir(const char* dirname)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->openDir(dirname);
+    return _sftp->openDir(dirname);
 }
 
 bool Ne7SftpSubsystem::readFile(uint32 fileID, uint64 offset)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->readFile(fileID, offset);
+    return _sftp->readFile(fileID, offset);
 }
 
 bool Ne7SftpSubsystem::writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 offset)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->writeFile(fileID, data, len, offset);
+    return _sftp->writeFile(fileID, data, len, offset);
 }
 
 bool Ne7SftpSubsystem::closeFile(uint32 fileID)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->closeFile(fileID);
+    return _sftp->closeFile(fileID);
 }
 
 bool Ne7SftpSubsystem::errorNotInited()
@@ -896,119 +884,119 @@ bool Ne7SftpSubsystem::errorNotInited()
 
 bool Ne7SftpSubsystem::getFileAttrs(fileAttrs& attrs, const char* filename, bool followSymLinks)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->getFileAttrs(attrs, filename, followSymLinks);
+    return _sftp->getFileAttrs(attrs, filename, followSymLinks);
 }
 
 bool Ne7SftpSubsystem::get(const char* remoteFile, FILE* localFile)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->get(remoteFile, localFile);
+    return _sftp->get(remoteFile, localFile);
 }
 
 bool Ne7SftpSubsystem::put(FILE* localFile, const char* remoteFile)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->put(localFile, remoteFile);
+    return _sftp->put(localFile, remoteFile);
 }
 
 bool Ne7SftpSubsystem::rm(const char* remoteFile)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->rm(remoteFile);
+    return _sftp->rm(remoteFile);
 }
 
 bool Ne7SftpSubsystem::mv(const char* oldFile, const char* newFile)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->mv(oldFile, newFile);
+    return _sftp->mv(oldFile, newFile);
 }
 
 bool Ne7SftpSubsystem::mkdir(const char* remoteDir)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->mkdir(remoteDir);
+    return _sftp->mkdir(remoteDir);
 }
 
 bool Ne7SftpSubsystem::rmdir(const char* remoteDir)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->rmdir(remoteDir);
+    return _sftp->rmdir(remoteDir);
 }
 
 const char* Ne7SftpSubsystem::ls(const char* remoteDir, bool longNames)
 {
-    if (!inited)
+    if (!_inited)
     {
         errorNotInited();
         return 0;
     }
-    return sftp->ls(remoteDir, longNames);
+    return _sftp->ls(remoteDir, longNames);
 }
 
 bool Ne7SftpSubsystem::cd(const char* remoteDir)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->cd(remoteDir);
+    return _sftp->cd(remoteDir);
 }
 
 bool Ne7SftpSubsystem::chmod(const char* remoteFile, const char* mode)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->chmod(remoteFile, mode);
+    return _sftp->chmod(remoteFile, mode);
 }
 
 bool Ne7SftpSubsystem::chown(const char* remoteFile, uint32_t uid, uint32_t gid)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->chown(remoteFile, uid, gid);
+    return _sftp->chown(remoteFile, uid, gid);
 }
 
 bool Ne7SftpSubsystem::isFile(const char* remoteFile)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->isFile(remoteFile);
+    return _sftp->isFile(remoteFile);
 }
 
 bool Ne7SftpSubsystem::isDir(const char* remoteFile)
 {
-    if (!inited)
+    if (!_inited)
     {
         return errorNotInited();
     }
-    return sftp->isDir(remoteFile);
+    return _sftp->isDir(remoteFile);
 }
 

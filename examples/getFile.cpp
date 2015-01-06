@@ -13,12 +13,12 @@ PasswordAuthentication yes
 #include <iostream>
 #include <fstream>
 
-void reportError(const std::string &tag, ne7ssh* ssh)
+void reportError(const std::string &tag, Ne7sshError* errors)
 {
     std::string errmsg;
     do
     {
-        errmsg = ssh->errors()->pop();
+        errmsg = errors->pop();
         if (errmsg.size() > 0)
         {
             std::cerr << tag << " failed with last error: " << errmsg << std::endl;
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
     channel1 = _ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0);
     if (channel1 < 0)
     {
-        reportError("Connection", _ssh);
+        reportError("Connection", _ssh->errors());
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
 
     if (!_ssh->sendCmd("cat ~/test.bin", channel1, 100))
     {
-        reportError("Command", _ssh);
+        reportError("Command", _ssh->errors());
         delete _ssh;
         return EXIT_FAILURE;
     }

@@ -23,12 +23,12 @@ struct ssh_thrarg_t
     int     thrid;
 };
 
-void reportError(const std::string &tag, ne7ssh* ssh)
+void reportError(const std::string &tag, Ne7sshError* errors)
 {
     std::string errmsg;
     do
     {
-        errmsg = ssh->errors()->pop();
+        errmsg = errors->pop();
         if (errmsg.size() > 0)
         {
             std::cerr << tag << " failed with last error: " << errmsg << std::endl;
@@ -80,14 +80,14 @@ void* thread_proc(void* initData)
         channel1 = _ssh->connectWithPassword("remoteHost", 22, "remoteUsr", "password", true, 30);
         if (channel1 < 0)
         {
-            reportError("Thread1. Connection", _ssh);
+            reportError("Thread1. Connection", _ssh->errors());
             continue;
         }
 
         // Wait for bash prompt, or die in 5 seconds.
         if (!_ssh->waitFor(channel1, " $", 5))
         {
-            reportError("Waiting for remote", _ssh);
+            reportError("Waiting for remote", _ssh->errors());
             _ssh->close(channel1);
             continue;
         }
@@ -95,7 +95,7 @@ void* thread_proc(void* initData)
         // Send "ls" command.
         if (!_ssh->send("ls -al\n", channel1))
         {
-            reportError("Send command", _ssh);
+            reportError("Send command", _ssh->errors());
             _ssh->close(channel1);
             continue;
         }
@@ -103,7 +103,7 @@ void* thread_proc(void* initData)
         // Wait for bash prompt, or die in 5 seconds
         if (!_ssh->waitFor(channel1, " $", 5))
         {
-            reportError("Waiting for remote site", _ssh);
+            reportError("Waiting for remote site", _ssh->errors());
             _ssh->close(channel1);
             continue;
         }

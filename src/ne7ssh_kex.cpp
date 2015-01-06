@@ -40,11 +40,7 @@ void ne7ssh_kex::constructLocalKex()
     localKex.clear();
     localKex.addChar(SSH2_MSG_KEXINIT);
 
-#if BOTAN_PRE_18 || BOTAN_PRE_15
-    Botan::Global_RNG::randomize(random, 16);
-#else
-    ne7ssh::rng->randomize(random, 16);
-#endif
+    ne7ssh::s_rng->randomize(random, 16);
 
     localKex.addBytes(random, 16);
     localKex.addString(ne7ssh::KEX_ALGORITHMS);

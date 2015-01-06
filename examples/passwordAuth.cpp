@@ -14,12 +14,12 @@
 #include <ne7ssh.h>
 #include <iostream>
 
-void reportError(const std::string &tag, ne7ssh* ssh)
+void reportError(const std::string &tag, Ne7sshError* errors)
 {
     std::string errmsg;
     do
     {
-        errmsg = ssh->errors()->pop();
+        errmsg = errors->pop();
         if (errmsg.size() > 0)
         {
             std::cerr << tag << " failed with last error: " << errmsg << std::endl;
@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
     channel1 = _ssh->connectWithPassword(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        reportError("Connection", _ssh);
+        reportError("Connection", _ssh->errors());
         delete _ssh;
         return EXIT_FAILURE;
     }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds.
     if (!_ssh->waitFor(channel1, " $", 5))
     {
-        reportError("Wait", _ssh);
+        reportError("Wait", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     // Send "ps ax" command.
     if (!_ssh->send("ps ax\n", channel1))
     {
-        reportError("ps", _ssh);
+        reportError("ps", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds
     if (!_ssh->waitFor(channel1, " $", 5))
     {
-        reportError("Wait for ps", _ssh);
+        reportError("Wait for ps", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 
     if (!result)
     {
-        reportError("Data received", _ssh);
+        reportError("Data received", _ssh->errors());
     }
     else
     {
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     // Send "netstat -na" command.
     if (!_ssh->send("netstat -na\n", channel1))
     {
-        reportError("netstat", _ssh);
+        reportError("netstat", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
     // Wait for bash prompt, or die in 5 seconds
     if (!_ssh->waitFor(channel1, " $", 5))
     {
-        reportError("Wait for netstat", _ssh);
+        reportError("Wait for netstat", _ssh->errors());
         _ssh->close(channel1);
         delete _ssh;
         return EXIT_FAILURE;
@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
 
     if (!result)
     {
-        reportError("Data received", _ssh);
+        reportError("Data received", _ssh->errors());
     }
     else
     {
