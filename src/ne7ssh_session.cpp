@@ -19,6 +19,7 @@
 ne7ssh_session::ne7ssh_session()
     : _sendChannel(0),
     _receiveChannel(0),
+    _maxPacket(0),
     _channelID(-1),
     _transport(0)
 {

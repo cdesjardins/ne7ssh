@@ -381,27 +381,27 @@ bool Ne7sshSftp::handleNames(Botan::SecureVector<Botan::byte>& packet)
         tmpVar.addVectorField(fileName);
         sftpBuffer.getString(fileName);
         tmpVar.addVectorField(fileName);
-        attrs.flags = sftpBuffer.getInt();
-        if (attrs.flags & SSH2_FILEXFER_ATTR_SIZE)
+        _attrs.flags = sftpBuffer.getInt();
+        if (_attrs.flags & SSH2_FILEXFER_ATTR_SIZE)
         {
-            attrs.size = sftpBuffer.getInt64();
+            _attrs.size = sftpBuffer.getInt64();
         }
 
-        if (attrs.flags & SSH2_FILEXFER_ATTR_UIDGID)
+        if (_attrs.flags & SSH2_FILEXFER_ATTR_UIDGID)
         {
-            attrs.owner = sftpBuffer.getInt();
-            attrs.group = sftpBuffer.getInt();
+            _attrs.owner = sftpBuffer.getInt();
+            _attrs.group = sftpBuffer.getInt();
         }
 
-        if (attrs.flags & SSH2_FILEXFER_ATTR_PERMISSIONS)
+        if (_attrs.flags & SSH2_FILEXFER_ATTR_PERMISSIONS)
         {
-            attrs.permissions = sftpBuffer.getInt();
+            _attrs.permissions = sftpBuffer.getInt();
         }
 
-        if (attrs.flags & SSH2_FILEXFER_ATTR_ACMODTIME)
+        if (_attrs.flags & SSH2_FILEXFER_ATTR_ACMODTIME)
         {
-            attrs.atime = sftpBuffer.getInt();
-            attrs.mtime = sftpBuffer.getInt();
+            _attrs.atime = sftpBuffer.getInt();
+            _attrs.mtime = sftpBuffer.getInt();
         }
     }
     _fileBuffer += tmpVar.value();
@@ -415,27 +415,27 @@ bool Ne7sshSftp::processAttrs(Botan::SecureVector<Botan::byte>& packet)
     SecureVector<Botan::byte> data;
 
     sftpBuffer.getInt();
-    attrs.flags = sftpBuffer.getInt();
-    if (attrs.flags & SSH2_FILEXFER_ATTR_SIZE)
+    _attrs.flags = sftpBuffer.getInt();
+    if (_attrs.flags & SSH2_FILEXFER_ATTR_SIZE)
     {
-        attrs.size = sftpBuffer.getInt64();
+        _attrs.size = sftpBuffer.getInt64();
     }
 
-    if (attrs.flags & SSH2_FILEXFER_ATTR_UIDGID)
+    if (_attrs.flags & SSH2_FILEXFER_ATTR_UIDGID)
     {
-        attrs.owner = sftpBuffer.getInt();
-        attrs.group = sftpBuffer.getInt();
+        _attrs.owner = sftpBuffer.getInt();
+        _attrs.group = sftpBuffer.getInt();
     }
 
-    if (attrs.flags & SSH2_FILEXFER_ATTR_PERMISSIONS)
+    if (_attrs.flags & SSH2_FILEXFER_ATTR_PERMISSIONS)
     {
-        attrs.permissions = sftpBuffer.getInt();
+        _attrs.permissions = sftpBuffer.getInt();
     }
 
-    if (attrs.flags & SSH2_FILEXFER_ATTR_ACMODTIME)
+    if (_attrs.flags & SSH2_FILEXFER_ATTR_ACMODTIME)
     {
-        attrs.atime = sftpBuffer.getInt();
-        attrs.mtime = sftpBuffer.getInt();
+        _attrs.atime = sftpBuffer.getInt();
+        _attrs.mtime = sftpBuffer.getInt();
     }
 
     return true;
@@ -877,7 +877,7 @@ uint64 Ne7sshSftp::getFileSize(uint32 fileID)
         return 0;
     }
 
-    return attrs.size;
+    return _attrs.size;
 }
 
 bool Ne7sshSftp::getFileAttrs(Ne7SftpSubsystem::fileAttrs& attributes, const char* remoteFile, bool followSymLinks)
@@ -899,12 +899,12 @@ bool Ne7sshSftp::getFileAttrs(Ne7SftpSubsystem::fileAttrs& attributes, const cha
         return false;
     }
 
-    attributes.size = attrs.size;
-    attributes.owner = attrs.owner;
-    attributes.group = attrs.group;
-    attributes.permissions = attrs.permissions;
-    attributes.atime = attrs.atime;
-    attributes.mtime = attrs.mtime;
+    attributes.size = _attrs.size;
+    attributes.owner = _attrs.owner;
+    attributes.group = _attrs.group;
+    attributes.permissions = _attrs.permissions;
+    attributes.atime = _attrs.atime;
+    attributes.mtime = _attrs.mtime;
 
     return true;
 }
@@ -920,12 +920,12 @@ bool Ne7sshSftp::getFileAttrs(sftpFileAttrs& attributes, Botan::SecureVector<Bot
         ne7ssh::errors()->push(_session->getSshChannel(), "Failed to get remote file attributes.");
         return false;
     }
-    attributes.size = attrs.size;
-    attributes.owner = attrs.owner;
-    attributes.group = attrs.group;
-    attributes.permissions = attrs.permissions;
-    attributes.atime = attrs.atime;
-    attributes.mtime = attrs.mtime;
+    attributes.size = _attrs.size;
+    attributes.owner = _attrs.owner;
+    attributes.group = _attrs.group;
+    attributes.permissions = _attrs.permissions;
+    attributes.atime = _attrs.atime;
+    attributes.mtime = _attrs.mtime;
 
     return true;
 }
@@ -950,7 +950,7 @@ bool Ne7sshSftp::isType(const char* remoteFile, uint32 type)
         return false;
     }
 
-    perms = attrs.permissions;
+    perms = _attrs.permissions;
     if (perms & type)
     {
         return true;
@@ -1383,7 +1383,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
     ne7ssh_string fullPath = getFullPath(remoteFile);
     uint32 perms, len, octet = 0;
     bool u, g, o, plus;
-    const char* _pos;
+    const char* pos;
     uint8 i;
     char converter[] = {'0', '0', '0', '0', '0'};
 
@@ -1392,12 +1392,12 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
         return false;
     }
 
-    if (!getFileAttrs(attrs, fullPath.value(), true))
+    if (!getFileAttrs(_attrs, fullPath.value(), true))
     {
         return false;
     }
 
-    perms = attrs.permissions;
+    perms = _attrs.permissions;
 
     len = strlen(mode);
     if (len < 5 && len > 2)
@@ -1412,12 +1412,12 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
 
         if (i != len)
         {
-            _pos = mode;
+            pos = mode;
         }
         else
         {
             memcpy(converter + (5 - len), mode, len);
-            octet = strtol(converter, (char**)&_pos, 8);
+            octet = strtol(converter, (char**)&pos, 8);
             if (octet > 07777)
             {
                 ne7ssh::errors()->push(_session->getSshChannel(), "Invalid permission octet.");
@@ -1434,19 +1434,19 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
         }
     }
 
-    _pos = mode;
+    pos = mode;
     if (!octet)
     {
-        while (*_pos)
+        while (*pos)
         {
-            if (*_pos == ',')
+            if (*pos == ',')
             {
-                _pos++;
+                pos++;
             }
             u = g = o = plus = false;
-            while (*_pos && *_pos != '+' && *_pos != '-')
+            while (*pos && *pos != '+' && *pos != '-')
             {
-                switch (*_pos)
+                switch (*pos)
                 {
                     case 'u':
                         u = true;
@@ -1468,17 +1468,17 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
                         ne7ssh::errors()->push(_session->getSshChannel(), "Invalid mode string.");
                         return false;
                 }
-                _pos++;
+                pos++;
             }
 
-            if (*_pos == '+')
+            if (*pos == '+')
             {
                 plus = true;
             }
-            _pos++;
-            while (*_pos && *_pos != ',')
+            pos++;
+            while (*pos && *pos != ',')
             {
-                switch (*_pos)
+                switch (*pos)
                 {
                     case 'r':
                         if (u)
@@ -1608,7 +1608,7 @@ bool Ne7sshSftp::chmod(const char* remoteFile, const char* mode)
                         ne7ssh::errors()->push(_session->getSshChannel(), "Invalid mode string.");
                         return false;
                 }
-                _pos++;
+                pos++;
             }
         }
     }
@@ -1653,13 +1653,13 @@ bool Ne7sshSftp::chown(const char* remoteFile, uint32 uid, uint32 gid)
         return false;
     }
 
-    if (!getFileAttrs(attrs, fullPath.value(), true))
+    if (!getFileAttrs(_attrs, fullPath.value(), true))
     {
         return false;
     }
 
-    old_uid = attrs.owner;
-    old_gid = attrs.group;
+    old_uid = _attrs.owner;
+    old_gid = _attrs.group;
 
     packet.addChar(SSH2_FXP_SETSTAT);
     packet.addInt(this->_seq++);

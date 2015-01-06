@@ -129,7 +129,7 @@ private:
         uint32 mtime;
     } sftpFileAttrs;
 
-    sftpFileAttrs attrs;
+    sftpFileAttrs _attrs;
 
     /**
     * Structure used to store open rmote file.

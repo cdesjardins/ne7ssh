@@ -29,6 +29,8 @@ ne7ssh_channel::ne7ssh_channel(std::shared_ptr<ne7ssh_session> session)
     _cmdComplete(false),
     _shellSpawned(false),
     _session(session),
+    _windowRecv(0),
+    _windowSend(0),
     _channelOpened(false)
 {
 }
@@ -81,7 +83,7 @@ bool ne7ssh_channel::handleChannelConfirm()
     uint32 field;
 
     // Receive Channel
-    field = channelConfirm.getInt();
+    channelConfirm.getInt();
     // Send Channel
     field = channelConfirm.getInt();
     _session->setSendChannel(field);
@@ -103,7 +105,7 @@ bool ne7ssh_channel::adjustWindow(Botan::SecureVector<Botan::byte>& packet)
     uint32 field;
 
     // channel number
-    field = adjustWindow.getInt();
+    adjustWindow.getInt();
 
     // add bytes to the window
     field = adjustWindow.getInt();

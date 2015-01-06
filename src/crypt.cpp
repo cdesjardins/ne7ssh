@@ -28,10 +28,13 @@ using namespace Botan;
 ne7ssh_crypt::ne7ssh_crypt(std::shared_ptr<ne7ssh_session> session)
     : _session(session),
     _kexMethod(DH_GROUP1_SHA1),
+    _hostkeyMethod(SSH_RSA),
     _c2sCryptoMethod(AES128_CBC),
     _s2cCryptoMethod(AES128_CBC),
     _c2sMacMethod(HMAC_MD5),
     _s2cMacMethod(HMAC_MD5),
+    _c2sCmprsMethod(NONE),
+    _s2cCmprsMethod(NONE),
     _inited(false),
     _encryptBlock(0),
     _decryptBlock(0)

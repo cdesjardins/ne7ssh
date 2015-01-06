@@ -348,7 +348,6 @@ bool ne7ssh_connection::authWithKey(const char* username, const char* privKeyFil
 bool ne7ssh_connection::checkRemoteVersion()
 {
     SecureVector<Botan::byte> remoteVer, tmpVar;
-    Botan::byte* _pos;
     if (!_transport->receive(remoteVer))
     {
         return false;
@@ -362,12 +361,13 @@ bool ne7ssh_connection::checkRemoteVersion()
     }
     else
     {
-        _pos = remoteVer.end() - 1;
-        while (*_pos == '\r' || *_pos == '\n')
+        Botan::byte* pos;
+        pos = remoteVer.end() - 1;
+        while (*pos == '\r' || *pos == '\n')
         {
-            _pos--;
+            pos--;
         }
-        tmpVar = SecureVector<Botan::byte>(remoteVer.begin(), _pos - remoteVer.begin() + 1);
+        tmpVar = SecureVector<Botan::byte>(remoteVer.begin(), pos - remoteVer.begin() + 1);
         _session->setRemoteVersion(tmpVar);
         return true;
     }
