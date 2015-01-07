@@ -13,6 +13,7 @@
 
 #include <ne7ssh.h>
 #include <iostream>
+#include <string>
 
 void reportError(const std::string &tag, Ne7sshError* errors)
 {
@@ -37,48 +38,48 @@ int main(int argc, char* argv[])
         std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <privatekeyfilename>" << std::endl;
         return EXIT_FAILURE;
     }
-    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
+    ne7ssh::create();
     // Set SSH connection options.
-    ssh->setOptions("aes128-cbc", "hmac-sha1");
+    ne7ssh::setOptions("aes128-cbc", "hmac-sha1");
 
     // Initiate connection.
-    channel1 = ssh->connectWithKey(argv[1], 22, argv[2], argv[3]);
+    channel1 = ne7ssh::connectWithKey(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        reportError("Connection", ssh->errors());
+        reportError("Connection", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds.
-    if (!ssh->waitFor(channel1, "$", 5))
+    if (!ne7ssh::waitFor(channel1, "$", 5))
     {
-        reportError("Wait for prompt", ssh->errors());
-        ssh->close(channel1);
+        reportError("Wait for prompt", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Send "ls" command.
-    if (!ssh->send("ls\n", channel1))
+    if (!ne7ssh::send("ls\n", channel1))
     {
-        reportError("ls", ssh->errors());
-        ssh->close(channel1);
+        reportError("ls", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds
-    if (!ssh->waitFor(channel1, "$", 5))
+    if (!ne7ssh::waitFor(channel1, "$", 5))
     {
-        reportError("Wait for ls", ssh->errors());
-        ssh->close(channel1);
+        reportError("Wait for ls", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Fetch recieved data.
-    result = ssh->read(channel1);
+    result = ne7ssh::read(channel1);
 
     if (!result)
     {
-        reportError("Read", ssh->errors());
+        reportError("Read", ne7ssh::errors());
     }
     else
     {
@@ -86,7 +87,7 @@ int main(int argc, char* argv[])
     }
 
     // Terminate connection by sending "exit" command.
-    ssh->send("exit\n", channel1);
+    ne7ssh::send("exit\n", channel1);
 
     return EXIT_SUCCESS;
 }

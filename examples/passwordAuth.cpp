@@ -13,6 +13,7 @@
 
 #include <ne7ssh.h>
 #include <iostream>
+#include <string>
 
 void reportError(const std::string &tag, Ne7sshError* errors)
 {
@@ -38,49 +39,49 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
+    ne7ssh::create();
 
     // Set SSH connection options.
-    ssh->setOptions("aes192-cbc", "hmac-md5");
+    ne7ssh::setOptions("aes192-cbc", "hmac-md5");
 
     // Initiate connection.
-    channel1 = ssh->connectWithPassword(argv[1], 22, argv[2], argv[3]);
+    channel1 = ne7ssh::connectWithPassword(argv[1], 22, argv[2], argv[3]);
     if (channel1 < 0)
     {
-        reportError("Connection", ssh->errors());
+        reportError("Connection", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds.
-    if (!ssh->waitFor(channel1, " $", 5))
+    if (!ne7ssh::waitFor(channel1, " $", 5))
     {
-        reportError("Wait", ssh->errors());
-        ssh->close(channel1);
+        reportError("Wait", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Send "ps ax" command.
-    if (!ssh->send("ps ax\n", channel1))
+    if (!ne7ssh::send("ps ax\n", channel1))
     {
-        reportError("ps", ssh->errors());
-        ssh->close(channel1);
+        reportError("ps", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds
-    if (!ssh->waitFor(channel1, " $", 5))
+    if (!ne7ssh::waitFor(channel1, " $", 5))
     {
-        reportError("Wait for ps", ssh->errors());
-        ssh->close(channel1);
+        reportError("Wait for ps", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Fetch recieved data.
-    result = ssh->read(channel1);
+    result = ne7ssh::read(channel1);
 
     if (!result)
     {
-        reportError("Data received", ssh->errors());
+        reportError("Data received", ne7ssh::errors());
     }
     else
     {
@@ -88,34 +89,34 @@ int main(int argc, char* argv[])
     }
 
     // Send "netstat -na" command.
-    if (!ssh->send("netstat -na\n", channel1))
+    if (!ne7ssh::send("netstat -na\n", channel1))
     {
-        reportError("netstat", ssh->errors());
-        ssh->close(channel1);
+        reportError("netstat", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Wait for bash prompt, or die in 5 seconds
-    if (!ssh->waitFor(channel1, " $", 5))
+    if (!ne7ssh::waitFor(channel1, " $", 5))
     {
-        reportError("Wait for netstat", ssh->errors());
-        ssh->close(channel1);
+        reportError("Wait for netstat", ne7ssh::errors());
+        ne7ssh::close(channel1);
         return EXIT_FAILURE;
     }
 
     // Fetch recieved data.
-    result = ssh->read(channel1);
+    result = ne7ssh::read(channel1);
 
     if (!result)
     {
-        reportError("Data received", ssh->errors());
+        reportError("Data received", ne7ssh::errors());
     }
     else
     {
         std::cout << "Received data:" << std::endl << result << std::endl;
     }
     // Terminate connection by sending "exit" command.
-    ssh->send("exit\n", channel1);
+    ne7ssh::send("exit\n", channel1);
 
     return EXIT_SUCCESS;
 }

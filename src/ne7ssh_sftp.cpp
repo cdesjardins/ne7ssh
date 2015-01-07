@@ -19,6 +19,7 @@
 #include "ne7ssh_transport.h"
 #include "ne7ssh_sftp.h"
 #include "ne7ssh_sftp_packet.h"
+#include "ne7ssh_impl.h"
 #include "ne7ssh.h"
 #include "ne7ssh_session.h"
 #include "ne7ssh_channel.h"

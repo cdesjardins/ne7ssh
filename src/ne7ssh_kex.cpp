@@ -15,6 +15,7 @@
  ***************************************************************************/
 
 #include "ne7ssh_kex.h"
+#include "ne7ssh_impl.h"
 #include "ne7ssh.h"
 #include <botan/rng.h>
 
@@ -32,8 +33,8 @@ ne7ssh_kex::~ne7ssh_kex()
 void ne7ssh_kex::constructLocalKex()
 {
     Botan::byte random[16];
-    ne7ssh_string myCiphers(ne7ssh::CIPHER_ALGORITHMS, 0);
-    ne7ssh_string myMacs(ne7ssh::MAC_ALGORITHMS, 0);
+    ne7ssh_string myCiphers(ne7ssh_impl::CIPHER_ALGORITHMS, 0);
+    ne7ssh_string myMacs(ne7ssh_impl::MAC_ALGORITHMS, 0);
     SecureVector<Botan::byte> tmpCiphers, tmpMacs;
     char* cipher, * hmac;
     size_t len;
@@ -44,10 +45,10 @@ void ne7ssh_kex::constructLocalKex()
     ne7ssh_crypt::s_rng->randomize(random, 16);
 
     _localKex.addBytes(random, 16);
-    _localKex.addString(ne7ssh::KEX_ALGORITHMS);
-    _localKex.addString(ne7ssh::HOSTKEY_ALGORITHMS);
+    _localKex.addString(ne7ssh_impl::KEX_ALGORITHMS);
+    _localKex.addString(ne7ssh_impl::HOSTKEY_ALGORITHMS);
 
-    if (ne7ssh::PREFERED_CIPHER.size() > 0)
+    if (ne7ssh_impl::PREFERED_CIPHER.size() > 0)
     {
         myCiphers.split(',');
         myCiphers.resetParts();
@@ -58,7 +59,7 @@ void ne7ssh_kex::constructLocalKex()
             if (cipher != NULL)
             {
                 len = strlen(cipher);
-                if (ne7ssh::PREFERED_CIPHER.compare(cipher) == 0)
+                if (ne7ssh_impl::PREFERED_CIPHER.compare(cipher) == 0)
                 {
                     _ciphers += SecureVector<Botan::byte>((Botan::byte*)cipher, (uint32_t) len);
                 }
@@ -80,7 +81,7 @@ void ne7ssh_kex::constructLocalKex()
     }
 // _ciphers.append (&null_byte, 1);
 
-    if (ne7ssh::PREFERED_MAC.size() > 0)
+    if (ne7ssh_impl::PREFERED_MAC.size() > 0)
     {
         myMacs.split(',');
         myMacs.resetParts();
@@ -91,7 +92,7 @@ void ne7ssh_kex::constructLocalKex()
             if (hmac != NULL)
             {
                 len = strlen(hmac);
-                if (ne7ssh::PREFERED_MAC.compare(hmac) == 0)
+                if (ne7ssh_impl::PREFERED_MAC.compare(hmac) == 0)
                 {
                     _hmacs += SecureVector<Botan::byte>((Botan::byte*)hmac, (uint32_t) len);
                 }
@@ -117,8 +118,8 @@ void ne7ssh_kex::constructLocalKex()
     _localKex.addVectorField(_ciphers);
     _localKex.addVectorField(_hmacs);
     _localKex.addVectorField(_hmacs);
-    _localKex.addString(ne7ssh::COMPRESSION_ALGORITHMS);
-    _localKex.addString(ne7ssh::COMPRESSION_ALGORITHMS);
+    _localKex.addString(ne7ssh_impl::COMPRESSION_ALGORITHMS);
+    _localKex.addString(ne7ssh_impl::COMPRESSION_ALGORITHMS);
     _localKex.addInt(0);
     _localKex.addInt(0);
     _localKex.addChar('\0');
@@ -172,7 +173,7 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!crypto->agree(agreed, ne7ssh::KEX_ALGORITHMS, algos))
+    if (!crypto->agree(agreed, ne7ssh_impl::KEX_ALGORITHMS, algos))
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "No compatible key exchange algorithms.");
         return false;
@@ -186,7 +187,7 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!crypto->agree(agreed, ne7ssh::HOSTKEY_ALGORITHMS, algos))
+    if (!crypto->agree(agreed, ne7ssh_impl::HOSTKEY_ALGORITHMS, algos))
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "No compatible Hostkey algorithms.");
         return false;
@@ -256,7 +257,7 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!crypto->agree(agreed, ne7ssh::COMPRESSION_ALGORITHMS, algos))
+    if (!crypto->agree(agreed, ne7ssh_impl::COMPRESSION_ALGORITHMS, algos))
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "No compatible compression algorithms.");
         return false;
@@ -270,7 +271,7 @@ bool ne7ssh_kex::handleInit()
     {
         return false;
     }
-    if (!crypto->agree(agreed, ne7ssh::COMPRESSION_ALGORITHMS, algos))
+    if (!crypto->agree(agreed, ne7ssh_impl::COMPRESSION_ALGORITHMS, algos))
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "No compatible compression algorithms.");
         return false;

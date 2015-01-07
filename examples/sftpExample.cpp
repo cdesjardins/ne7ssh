@@ -10,6 +10,7 @@
 #include <ne7ssh.h>
 #include <iostream>
 #include <stdio.h>
+#include <string>
 
 void reportError(const std::string &tag, Ne7sshError* errors)
 {
@@ -37,23 +38,23 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    std::shared_ptr<ne7ssh> ssh = ne7ssh::ne7sshCreate();
+    ne7ssh::create();
 
     // Set SSH connection options.
-    ssh->setOptions("aes256-cbc", "hmac-md5");
+    ne7ssh::setOptions("aes256-cbc", "hmac-md5");
 
     // Initiate connection without starting a remote shell.
-    channel1 = ssh->connectWithPassword(argv[1], 22, argv[2], argv[3], 0, 20);
+    channel1 = ne7ssh::connectWithPassword(argv[1], 22, argv[2], argv[3], 0, 20);
     if (channel1 < 0)
     {
-        reportError("Connection", ssh->errors());
+        reportError("Connection", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Initiate SFTP subsystem.
-    if (!ssh->initSftp(_sftp, channel1))
+    if (!ne7ssh::initSftp(_sftp, channel1))
     {
-        reportError("Command", ssh->errors());
+        reportError("Command", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
@@ -71,35 +72,35 @@ int main(int argc, char* argv[])
     testFi = fopen("test.bin", "wb+");
     if (!testFi)
     {
-        reportError("Open", ssh->errors());
+        reportError("Open", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Download a file.
     if (!_sftp.get("test.bin", testFi))
     {
-        reportError("Get", ssh->errors());
+        reportError("Get", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Change directory.
     if (!_sftp.cd("testing"))
     {
-        reportError("cd", ssh->errors());
+        reportError("cd", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Upload the file.
     if (!_sftp.put(testFi, "test2.bin"))
     {
-        reportError("put", ssh->errors());
+        reportError("put", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
     // Create a new directory.
     if (!_sftp.mkdir("testing3"))
     {
-        reportError("mkdir", ssh->errors());
+        reportError("mkdir", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 
@@ -107,7 +108,7 @@ int main(int argc, char* argv[])
     dirList = _sftp.ls(".", true);
     if (!dirList)
     {
-        reportError("ls", ssh->errors());
+        reportError("ls", ne7ssh::errors());
         return EXIT_FAILURE;
     }
     else
@@ -118,7 +119,7 @@ int main(int argc, char* argv[])
     // Change permisions on newly uploaded file.
     if (!_sftp.chmod("test2.bin", "755"))
     {
-        reportError("chmod", ssh->errors());
+        reportError("chmod", ne7ssh::errors());
         return EXIT_FAILURE;
     }
 

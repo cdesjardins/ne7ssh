@@ -16,6 +16,7 @@
 
 #include "ne7ssh_connection.h"
 #include "ne7ssh_kex.h"
+#include "ne7ssh_impl.h"
 #include "ne7ssh.h"
 
 using namespace Botan;
@@ -375,7 +376,7 @@ bool ne7ssh_connection::checkRemoteVersion()
 
 bool ne7ssh_connection::sendLocalVersion()
 {
-    SecureVector<Botan::byte> localVer((const Botan::byte*)ne7ssh::SSH_VERSION, (uint32_t) strlen(ne7ssh::SSH_VERSION));
+    SecureVector<Botan::byte> localVer((const Botan::byte*)ne7ssh_impl::SSH_VERSION, (uint32_t)strlen(ne7ssh_impl::SSH_VERSION));
     _session->setLocalVersion(localVer);
     localVer += SecureVector<Botan::byte>((const Botan::byte*)"\r\n", 2);
 

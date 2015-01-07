@@ -17,6 +17,7 @@
 #include "ne7ssh_transport.h"
 #include "ne7ssh_channel.h"
 #include "ne7ssh_session.h"
+#include "ne7ssh_impl.h"
 #include "ne7ssh.h"
 
 using namespace Botan;

@@ -19,9 +19,6 @@
 
 #include <botan/build.h>
 
-//#include <botan/zlib.h>
-//#include "error.h"
-
 #if BOTAN_VERSION_MAJOR > 1
 #   error Unsupported Botan Version
 #endif
@@ -32,52 +29,10 @@
 
 #include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
-
-#include <stdlib.h>
-#include <string>
-#include <fcntl.h>
-#include <thread>
 #include <memory>
 
-#define SSH2_MSG_DISCONNECT 1
-#define SSH2_MSG_IGNORE 2
-
-#define SSH2_MSG_KEXINIT  20
-#define SSH2_MSG_NEWKEYS  21
-
-#define SSH2_MSG_KEXDH_INIT 30
-#define SSH2_MSG_KEXDH_REPLY  31
-
-#define SSH2_MSG_SERVICE_REQUEST 5
-#define SSH2_MSG_SERVICE_ACCEPT 6
-
-#define SSH2_MSG_USERAUTH_REQUEST 50
-#define SSH2_MSG_USERAUTH_FAILURE 51
-#define SSH2_MSG_USERAUTH_SUCCESS 52
-#define SSH2_MSG_USERAUTH_BANNER 53
-#define SSH2_MSG_USERAUTH_PK_OK 60
-
-#define SSH2_MSG_CHANNEL_OPEN                           90
-#define SSH2_MSG_CHANNEL_OPEN_CONFIRMATION              91
-#define SSH2_MSG_CHANNEL_OPEN_FAILURE                   92
-#define SSH2_MSG_CHANNEL_WINDOW_ADJUST                  93
-#define SSH2_MSG_CHANNEL_DATA                           94
-#define SSH2_MSG_CHANNEL_EXTENDED_DATA                  95
-#define SSH2_MSG_CHANNEL_EOF                            96
-#define SSH2_MSG_CHANNEL_CLOSE                          97
-#define SSH2_MSG_CHANNEL_REQUEST                        98
-#define SSH2_MSG_CHANNEL_SUCCESS                        99
-#define SSH2_MSG_CHANNEL_FAILURE                        100
-
-class ne7ssh_connection;
-
-/** definitions for Botan */
-namespace Botan
-{
-class LibraryInitializer;
-}
-
 class Ne7SftpSubsystem;
+class ne7ssh_impl;
 
 /**
 @author Andrew Useckas
@@ -86,27 +41,7 @@ class SSH_EXPORT ne7ssh
 {
 private:
 
-    static std::recursive_mutex s_mutex;
-    static std::shared_ptr<ne7ssh> s_ne7sshInst;
-    std::unique_ptr<Botan::LibraryInitializer> _init;
-    std::vector<std::shared_ptr<ne7ssh_connection> > _connections;
-    volatile static bool s_running;
-
-    /**
-     * Send / Receive thread.
-     * <p> For Internal use only
-     * @return Usually 0 when thread terminates
-     */
-    static void selectThread(std::shared_ptr<ne7ssh> _ssh);
-
-    /**
-     * Returns the number of active channel.
-     * @return Active channel.
-     */
-    uint32 getChannelNo();
-    std::thread _selectThread;
-
-    static Ne7sshError* s_errs;
+    static std::shared_ptr<ne7ssh_impl> s_ne7sshInst;
 
     /**
     * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.
@@ -117,16 +52,8 @@ private:
     ne7ssh& operator=(const ne7ssh&);
 
 public:
-    static const char* SSH_VERSION;
-    static const char* KEX_ALGORITHMS;
-    static const char* HOSTKEY_ALGORITHMS;
-    static const char* MAC_ALGORITHMS;
-    static const char* CIPHER_ALGORITHMS;
-    static const char* COMPRESSION_ALGORITHMS;
-    static std::string PREFERED_CIPHER;
-    static std::string PREFERED_MAC;
 
-    static std::shared_ptr<ne7ssh> ne7sshCreate();
+    static void create();
 
     /**
      * Destructor.
@@ -143,7 +70,7 @@ public:
      * @param timeout Timeout for the connection procedure, in seconds.
      * @return Returns newly assigned channel ID, or -1 if connection failed.
      */
-    int connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell = true, const int timeout = 0);
+    static int connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell = true, const int timeout = 0);
 
     /**
      * Connect to remote host using SSH2 protocol, with publickey authentication.
@@ -157,7 +84,7 @@ public:
      * @param timeout Timeout for the connection procedure, in seconds.
      * @return Returns newly assigned channel ID, or -1 if connection failed.
      */
-    int connectWithKey(const char* host, const short port, const char* username, const char* privKeyFileName, bool shell = true, const int timeout = 0);
+    static int connectWithKey(const char* host, const short port, const char* username, const char* privKeyFileName, bool shell = true, const int timeout = 0);
 
     /**
      * Retreives count of current connections
@@ -172,7 +99,7 @@ public:
      * @param channel Channel to send data on.
      * @return Returns true if the send was successful, otherwise false returned.
      */
-    bool send(const char* data, int channel);
+    static bool send(const char* data, int channel);
 
     /**
     * Can be used to send a single command and disconnect, similiar behavior to openssh when one appends a command to the end of ssh command.
@@ -181,35 +108,35 @@ public:
     * @param timeout How long to wait before giving up.
     * @return Returns true if the send was successful, otherwise false returned.
     */
-    bool sendCmd(const char* cmd, int channel, int timeout);
+    static bool sendCmd(const char* cmd, int channel, int timeout);
 
     /**
      * Closes specified channel.
      * @param channel Channel to close.
      * @return Returns true if closing was successful, otherwise false is returned.
      */
-    bool close(int channel);
+    static bool close(int channel);
 
     /**
     * Reads all data from receiving buffer on specified channel.
     * @param channel Channel to read data on.
     * @return Returns string read from receiver buffer or 0 if buffer is empty.
     */
-    const char* read(int channel);
+    static const char* read(int channel);
 
     /**
     * Reads all data from receiving buffer on specified channel. Returns pointer to void. Together with getReceivedSize and sendCmd can be used to read remote files.
     * @param channel Channel to read data on.
     * @return Returns pointer to the start of binary data or 0 if nothing received.
     */
-    void* readBinary(int channel);
+    static void* readBinary(int channel);
 
     /**
      * Returns the size of all data read. Used to read buffer passed 0x0.
      * @param channel Channel number which buffer size to check.
      * @return Return size of the buffer, or 0x0 if receive buffer empty.
      */
-    int getReceivedSize(int channel);
+    static int getReceivedSize(int channel);
 
     /**
      * Wait until receiving buffer contains a string passed in str, or until the function timeouts as specified in timeout.
@@ -218,7 +145,7 @@ public:
      * @param timeout Timeout in seconds.
      * @return Returns true if string specified in str variable has been received, otherwise false returned.
      */
-    bool waitFor(int channel, const char* str, uint32 timeout = 0);
+    static bool waitFor(int channel, const char* str, uint32 timeout = 0);
 
     /**
      * Sets prefered cipher and hmac algorithms.
@@ -226,7 +153,7 @@ public:
      * @param prefCipher prefered cipher algorithm string representation. Possible cipher algorithms are aes256-cbc, twofish-cbc, twofish256-cbc, blowfish-cbc, 3des-cbc, aes128-cbc, cast128-cbc.
      * @param prefHmac preferede hmac algorithm string representation. Possible hmac algorithms are hmac-md5, hmac-sha1, none.
      */
-    void setOptions(const char* prefCipher, const char* prefHmac);
+    static void setOptions(const char* prefCipher, const char* prefHmac);
 
     /**
      * Generate key pair.
@@ -237,7 +164,7 @@ public:
      * @param keySize Desired key size in bits. If not specified will default to 2048.
      * @return Return true if keys generated and written to the files. Otherwise false is returned.
      */
-    bool generateKeyPair(const char* type, const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 0);
+    static bool generateKeyPair(const char* type, const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 0);
 
     /**
      * This method is used to initialize a new SFTP subsystem.
@@ -245,7 +172,7 @@ public:
      * @param channel Channel ID returned by one of the connect methods.
      * @return True if the new subsystem successfully initialized. False on any error.
      */
-    bool initSftp(Ne7SftpSubsystem& _sftp, int channel);
+    static bool initSftp(Ne7SftpSubsystem& sftpSubsys, int channel);
 
     /**
      * This method returns a pointer to the current Error collection.
