@@ -30,14 +30,19 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
 
 find_file(HAVE_GIT git)
 if (HAVE_GIT)
-exec_program(
-    "git"
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ARGS "describe --dirty --always"
-    OUTPUT_VARIABLE VERSION )
-message(${VERSION})
+    exec_program(
+        "git"
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ARGS "describe --dirty --always"
+        OUTPUT_VARIABLE FULL_VERSION )
+    string(FIND ${FULL_VERSION} "-" index)
+    string(SUBSTRING ${FULL_VERSION} 0 ${index} SHORT_VERSION)
+else()
+    set(FULL_VERSION "2.x")
+    set(SHORT_VERSION "2.x")
 endif()
-
+message(STATUS "Using version numbers: ${FULL_VERSION} and ${SHORT_VERSION}")
+add_definitions( -DNE7SSH_FULL_VERSION="${FULL_VERSION}" -DNE7SSH_SHORT_VERSION="${SHORT_VERSION}")
 add_subdirectory ( src )
 add_subdirectory ( examples )
 
