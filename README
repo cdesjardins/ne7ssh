@@ -107,6 +107,8 @@ PPC, Linux SPARC, Solaris, Windows 2000 and XP.
 
 1.2 Dependencies
 
+A C++11 compatible compiler is required to build NetSiben SSH Library.
+
 NetSiben SSH Library requires Botan crypto library 1.10.
 
 The Botan library can be found here: http://botan.randombit.net
