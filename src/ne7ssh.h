@@ -36,7 +36,7 @@ class ne7ssh_impl;
 /**
 @author Andrew Useckas
 */
-class SSH_EXPORT ne7ssh
+class ne7ssh
 {
 public:
     /**
@@ -44,20 +44,20 @@ public:
     * This funciton must only be called once during application initialization.
     */
 
-    static void create();
+    SSH_EXPORT static void create();
 
     /**
     * Destroy the SSH working environment.
     * This funciton must only be called once during application shutdown.
     */
-    static void destroy();
+    SSH_EXPORT static void destroy();
 
     /**
     * Returns a pointer to the ne7ssh version number.
     * This is the only function that is ok to call before the create() function!
     * @param shortVersion specifies if the full version number should be returned or just the maj.min number.
     */
-    static const char* getVersion(const bool shortVersion = false);
+    SSH_EXPORT static const char* getVersion(const bool shortVersion = false);
 
     /**
      * Connect to remote host using SSH2 protocol, with password authentication.
@@ -69,7 +69,7 @@ public:
      * @param timeout Timeout for the connection procedure, in seconds.
      * @return Returns newly assigned channel ID, or -1 if connection failed.
      */
-    static int connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell = true, const int timeout = 0);
+    SSH_EXPORT static int connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell = true, const int timeout = 0);
 
     /**
      * Connect to remote host using SSH2 protocol, with publickey authentication.
@@ -83,7 +83,7 @@ public:
      * @param timeout Timeout for the connection procedure, in seconds.
      * @return Returns newly assigned channel ID, or -1 if connection failed.
      */
-    static int connectWithKey(const char* host, const short port, const char* username, const char* privKeyFileName, bool shell = true, const int timeout = 0);
+    SSH_EXPORT static int connectWithKey(const char* host, const short port, const char* username, const char* privKeyFileName, bool shell = true, const int timeout = 0);
 
     /**
      * Retreives count of current connections
@@ -98,7 +98,7 @@ public:
      * @param channel Channel to send data on.
      * @return Returns true if the send was successful, otherwise false returned.
      */
-    static bool send(const char* data, int channel);
+    SSH_EXPORT static bool send(const char* data, int channel);
 
     /**
     * Can be used to send a single command and disconnect, similiar behavior to openssh when one appends a command to the end of ssh command.
@@ -107,35 +107,35 @@ public:
     * @param timeout How long to wait before giving up.
     * @return Returns true if the send was successful, otherwise false returned.
     */
-    static bool sendCmd(const char* cmd, int channel, int timeout);
+    SSH_EXPORT static bool sendCmd(const char* cmd, int channel, int timeout);
 
     /**
      * Closes specified channel.
      * @param channel Channel to close.
      * @return Returns true if closing was successful, otherwise false is returned.
      */
-    static bool close(int channel);
+    SSH_EXPORT static bool close(int channel);
 
     /**
     * Reads all data from receiving buffer on specified channel.
     * @param channel Channel to read data on.
     * @return Returns string read from receiver buffer or 0 if buffer is empty.
     */
-    static const char* read(int channel);
+    SSH_EXPORT static const char* read(int channel);
 
     /**
     * Reads all data from receiving buffer on specified channel. Returns pointer to void. Together with getReceivedSize and sendCmd can be used to read remote files.
     * @param channel Channel to read data on.
     * @return Returns pointer to the start of binary data or 0 if nothing received.
     */
-    static void* readBinary(int channel);
+    SSH_EXPORT static void* readBinary(int channel);
 
     /**
      * Returns the size of all data read. Used to read buffer passed 0x0.
      * @param channel Channel number which buffer size to check.
      * @return Return size of the buffer, or 0x0 if receive buffer empty.
      */
-    static int getReceivedSize(int channel);
+    SSH_EXPORT static int getReceivedSize(int channel);
 
     /**
      * Wait until receiving buffer contains a string passed in str, or until the function timeouts as specified in timeout.
@@ -144,7 +144,7 @@ public:
      * @param timeout Timeout in seconds.
      * @return Returns true if string specified in str variable has been received, otherwise false returned.
      */
-    static bool waitFor(int channel, const char* str, uint32 timeout = 0);
+    SSH_EXPORT static bool waitFor(int channel, const char* str, uint32 timeout = 0);
 
     /**
      * Sets prefered cipher and hmac algorithms.
@@ -152,7 +152,7 @@ public:
      * @param prefCipher prefered cipher algorithm string representation. Possible cipher algorithms are aes256-cbc, twofish-cbc, twofish256-cbc, blowfish-cbc, 3des-cbc, aes128-cbc, cast128-cbc.
      * @param prefHmac preferede hmac algorithm string representation. Possible hmac algorithms are hmac-md5, hmac-sha1, none.
      */
-    static void setOptions(const char* prefCipher, const char* prefHmac);
+    SSH_EXPORT static void setOptions(const char* prefCipher, const char* prefHmac);
 
     /**
      * Generate key pair.
@@ -163,7 +163,7 @@ public:
      * @param keySize Desired key size in bits. If not specified will default to 2048.
      * @return Return true if keys generated and written to the files. Otherwise false is returned.
      */
-    static bool generateKeyPair(const char* type, const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 0);
+    SSH_EXPORT static bool generateKeyPair(const char* type, const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize = 0);
 
     /**
      * This method is used to initialize a new SFTP subsystem.
@@ -171,13 +171,13 @@ public:
      * @param channel Channel ID returned by one of the connect methods.
      * @return True if the new subsystem successfully initialized. False on any error.
      */
-    static bool initSftp(Ne7SftpSubsystem& sftpSubsys, int channel);
+    SSH_EXPORT static bool initSftp(Ne7SftpSubsystem& sftpSubsys, int channel);
 
     /**
      * This method returns a pointer to the current Error collection.
      * @return the Error collection
      */
-    static Ne7sshError* errors();
+    SSH_EXPORT static Ne7sshError* errors();
 
 private:
 
@@ -197,7 +197,7 @@ class Ne7sshSftp;
 /**
     @author Andrew Useckas <andrew@netsieben.com>
 */
-class SSH_EXPORT Ne7SftpSubsystem
+class Ne7SftpSubsystem
 {
 private:
     bool _inited;
@@ -211,7 +211,7 @@ private:
 
 public:
     /** Structure used to store rmote file attributes. */
-    typedef struct
+    SSH_EXPORT struct fileAttrs
     {
         uint64_t size;
         uint32_t owner;
@@ -219,33 +219,33 @@ public:
         uint32_t permissions;
         uint32_t atime;
         uint32_t mtime;
-    } fileAttrs;
+    };
 
     /** Modes used when opening a remote file. */
-    enum writeMode { READ, OVERWRITE, APPEND };
+    SSH_EXPORT enum writeMode { READ, OVERWRITE, APPEND };
 
     /**
      * Default constructor.
      */
-    Ne7SftpSubsystem ();
+    SSH_EXPORT Ne7SftpSubsystem();
 
     /**
      * Constructor used to initialize the subsystem with a new Ne7sshSftp class instance.
      * @param _sftp Ne7sshSftp class instance.
      */
-    Ne7SftpSubsystem (class std::shared_ptr<Ne7sshSftp> sftp);
+    SSH_EXPORT Ne7SftpSubsystem(class std::shared_ptr<Ne7sshSftp> sftp);
 
     /**
      * Default destructor.
      */
-    ~Ne7SftpSubsystem();
+    SSH_EXPORT ~Ne7SftpSubsystem();
 
     /**
     * This method is used to set a timeout for all SFTP subsystem communications.
     * @param _timeout Timeout in seconds.
     * @return True if timeout set, otherwise false.
     */
-    bool setTimeout(uint32 _timeout);
+    SSH_EXPORT bool setTimeout(uint32 _timeout);
 
     /**
     * Low level method used to open a remote file.
@@ -253,14 +253,14 @@ public:
     * @param mode Mode to be used when opening the file. Can be one of the modes defined by writeMode class variable.
     * @return Newly opened file ID or 0 if file could not be opened.
     */
-    uint32 openFile(const char* filename, uint8 mode);
+    SSH_EXPORT uint32 openFile(const char* filename, uint8 mode);
 
     /**
     * Low level method used to open an inode containing file entries a.k.a directory.
     * @param dirname Relative or full path to the inode.
     * @return Newly opened file ID or 0 if the inode could not be opened.
     */
-    uint32 openDir(const char* dirname);
+    SSH_EXPORT uint32 openDir(const char* dirname);
 
     /**
     * Low level method used to read datablock up to the size of SFTP_MAX_MSG_SIZE from a file.
@@ -268,7 +268,7 @@ public:
     * @param offset Offset.
     * @return True if file content successfully read and placed in the buffer. Otherwise false.
     */
-    bool readFile(uint32 fileID, uint64 offset = 0);
+    SSH_EXPORT bool readFile(uint32 fileID, uint64 offset = 0);
 
     /**
     * Low level method used to write data-block up to the size of SFTP_MAX_MSG_SIZE to a remote file.
@@ -278,14 +278,14 @@ public:
     * @param offset Offset in the remote file. If offset is passed EOF the space between EOF and offset will be filled by 0x0.
     * @return True if file contect successfully written. False on any error.
     */
-    bool writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 offset = 0);
+    SSH_EXPORT bool writeFile(uint32 fileID, const uint8* data, uint32 len, uint64 offset = 0);
 
     /**
     * Low level method used to close a file opened by using openFile() method.
     * @param fileID File ID returned by openFile() method.
     * @return True on success. False on any error.
     */
-    bool closeFile(uint32 fileID);
+    SSH_EXPORT bool closeFile(uint32 fileID);
 
     /**
     * This method is used to retrieve remote file attributes and place them into fileAttrs structure.
@@ -294,7 +294,7 @@ public:
     * @param followSymLinks If this variable is set to true, symbolic links will be followed. That is the default befavour. If this behavour is undesired, pass "false".
     * @return True if the attributes successfully retrieved. Otherwise false is returned.
     */
-    bool getFileAttrs(fileAttrs& attrs, const char* filename, bool followSymLinks = true);
+    SSH_EXPORT bool getFileAttrs(fileAttrs& attrs, const char* filename, bool followSymLinks = true);
 
     /**
     * This method is used to retrieve a remote file and dump it into local file.
@@ -302,7 +302,7 @@ public:
     * @param localFile Pointer to the FILE structure. If the file being retrieved is binary, use "w+" attributes in fopen function.
     * @return True if getting the file is succeeds. False on any error.
     */
-    bool get(const char* remoteFile, FILE* localFile);
+    SSH_EXPORT bool get(const char* remoteFile, FILE* localFile);
 
     /**
     * This method is used to upload a file to a remote server.
@@ -310,14 +310,14 @@ public:
     * @param remoteFile Full or relative path to the file on the remote side.
     * @return True if putting the file succeeds. False on any error.
     */
-    bool put(FILE* localFile, const char* remoteFile);
+    SSH_EXPORT bool put(FILE* localFile, const char* remoteFile);
 
     /**
     * This method is used to remove a file on a remote server.
     * @param remoteFile Full or relative path to the file on the remote side.
     * @return True if remove succeeds. False on any error.
     */
-    bool rm(const char* remoteFile);
+    SSH_EXPORT bool rm(const char* remoteFile);
 
     /**
     * This method is used to rename/move files.
@@ -325,21 +325,21 @@ public:
     * @param newFile Full or relative path to a new file on the remote side.
     * @return True if renaming successfull. False on any error.
     */
-    bool mv(const char* oldFile, const char* newFile);
+    SSH_EXPORT bool mv(const char* oldFile, const char* newFile);
 
     /**
     * This method is used to create a new directory.
     * @param remoteDir Full or relative path to a new directory on the remote server.
     * @return True if the directory successfully created. False on any error.
     */
-    bool mkdir(const char* remoteDir);
+    SSH_EXPORT bool mkdir(const char* remoteDir);
 
     /**
     * This method is used to remove a remote directory.
     * @param remoteDir Full or relative path to a directory to be removed.
     * @return True if the directory successfully removed. False on any error.
     */
-    bool rmdir(const char* remoteDir);
+    SSH_EXPORT bool rmdir(const char* remoteDir);
 
     /**
     * This methods is used retrieve a listing of a remote directory.
@@ -347,14 +347,14 @@ public:
     * @param longNames If set to "true" the returned string in addition to file strings will contain attributes for each file.
     * @return A pointer to a string containing the directory listing.
     */
-    const char* ls(const char* remoteDir, bool longNames = false);
+    SSH_EXPORT const char* ls(const char* remoteDir, bool longNames = false);
 
     /**
     * This method is used to change the current working directory.
     * @param remoteDir Full or relative path to the new working directory on the remote server.
     * @return True if change of directory succedded. False on any error.
     */
-    bool cd(const char* remoteDir);
+    SSH_EXPORT bool cd(const char* remoteDir);
 
     /**
     * This method is used for changing the permissions associated with a remote file.
@@ -362,7 +362,7 @@ public:
     * @param mode Mode string. It can be either a numerical mode expression such as "755" or an expression showing the modifications to be made, such as "ug+w". Mode string is the same as used by *nix chmod command.
     * @return True if the new permissions are succesfully applied to the remote file. False on any error.
     */
-    bool chmod(const char* remoteFile, const char* mode);
+    SSH_EXPORT bool chmod(const char* remoteFile, const char* mode);
 
     /**
     * This method is used to change the owner of a remote file.
@@ -371,21 +371,21 @@ public:
     * @param gid Numerical new owner group ID.
     * @return True if the change of ownership succeeds. False on any error.
     */
-    bool chown(const char* remoteFile, uint32_t uid, uint32_t gid = 0);
+    SSH_EXPORT bool chown(const char* remoteFile, uint32_t uid, uint32_t gid = 0);
 
     /**
     * This method is used to determine if a remote inode is a regular file.
     * @param remoteFile Full or relative path to the remote inode.
     * @return True if the remote inode is a regular file. Otherwise false.
     */
-    bool isFile(const char* remoteFile);
+    SSH_EXPORT bool isFile(const char* remoteFile);
 
     /**
     * This method is used to determine if a remote inode is a directory.
     * @param remoteFile Full or relative path to the remote file.
     * @return True if the remote inode is a directory. Otherwise false.
     */
-    bool isDir(const char* remoteFile);
+    SSH_EXPORT bool isDir(const char* remoteFile);
 };
 
 #endif

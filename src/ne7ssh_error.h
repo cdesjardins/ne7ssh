@@ -26,9 +26,11 @@
 /**
     @author Andrew Useckas <andrew@netsieben.com>
 */
-class SSH_EXPORT Ne7sshError
+
+class Ne7sshError
 {
 private:
+
     static std::recursive_mutex _mutex;
     /**
     * Structure for storing error messages.
@@ -39,12 +41,12 @@ public:
     /**
      * Ne7sshError constructor.
      */
-    Ne7sshError();
+    SSH_EXPORT Ne7sshError();
 
     /**
      * Ne7sshError destructor.
      */
-    ~Ne7sshError();
+    SSH_EXPORT ~Ne7sshError();
 
     /**
     * Pushes a new error message into the stack.
@@ -52,31 +54,31 @@ public:
     * @param format Specifies the error message followed by argument in printf format. The following formatting characters are supported: %s,%d,%i,%l,%x. Modifier %u can be used together with decimal to specify an unsigned variable. Returns null if no there are no erros in the Core context.
     * @return True on success, false on failure.
     */
-    bool push(int32 channel, const char* format, ...);
+    SSH_EXPORT bool push(int32 channel, const char* format, ...);
 
     /**
     * Pops an error message from the Core context.
     * @return The last error message in the Core context. The message is removed from the stack.
     */
-    const std::string pop();
+    SSH_EXPORT const std::string pop();
 
     /**
     * Pops an error message from the Channel context.
     * @param channel Specifies the channel error message was bound to. This is ne7ssh library channel, not the receive or send channels used by the transport layer.
     * @return The last error message in the Channel context. The message is removed from the stack. Returns null if no there are no erros in the Channel context.
     */
-    const std::string pop(int32 channel);
+    SSH_EXPORT const std::string pop(int32 channel);
 
     /**
     * Removes all error messages within Core context from the stack.
     */
-    void deleteCoreMsgs();
+    SSH_EXPORT void deleteCoreMsgs();
 
     /**
     * Removes all error messages within Channel context from the stack.
     * @param channel Specifies the channel error message was bound to. This is ne7ssh library channel, not the receive or send channels used by the transport layer.
     */
-    void deleteChannel(int32 channel);
+    SSH_EXPORT void deleteChannel(int32 channel);
 };
 
 #endif

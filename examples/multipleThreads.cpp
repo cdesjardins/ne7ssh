@@ -16,11 +16,12 @@
 #include <thread>
 #include <string>
 
-void* thread_proc(int third);
+void* thread_proc(int third, char* hostname, char* username, char* password);
 
 void reportError(const std::string &tag, Ne7sshError* errors)
 {
     std::string errmsg;
+    std::cerr << tag << std::endl;
     do
     {
         errmsg = errors->pop();
@@ -35,16 +36,21 @@ int main(int argc, char* argv[])
 {
     std::cout << argv[0] << " " << ne7ssh::getVersion() << std::endl;
 
+    if (argc != 4)
+    {
+        std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <password>" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     ne7ssh::create();
 
     // Set SSH connection options.
     ne7ssh::setOptions("aes128-cbc", "hmac-md5");
 
-
-    std::thread t1 = std::thread(&thread_proc, 0);
-    std::thread t2 = std::thread(&thread_proc, 1);
-    std::thread t3 = std::thread(&thread_proc, 2);
-    std::thread t4 = std::thread(&thread_proc, 3);
+    std::thread t1 = std::thread(&thread_proc, 0, argv[1], argv[2], argv[3]);
+    std::thread t2 = std::thread(&thread_proc, 1, argv[1], argv[2], argv[3]);
+    std::thread t3 = std::thread(&thread_proc, 2, argv[1], argv[2], argv[3]);
+    std::thread t4 = std::thread(&thread_proc, 3, argv[1], argv[2], argv[3]);
 
     t1.join();
     t2.join();
@@ -55,15 +61,16 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-void* thread_proc(int third)
+void* thread_proc(int third, char* hostname, char* username, char* password)
 {
     int channel1, i;
     const char* result;
 
     for (i = 0; i < 50; i++)
     {
+        std::cout << "thread " << third << std::endl;
         // Initiate a connection.
-        channel1 = ne7ssh::connectWithPassword("remoteHost", 22, "remoteUsr", "password", true, 30);
+        channel1 = ne7ssh::connectWithPassword(hostname, 22, username, password, true, 30);
         if (channel1 < 0)
         {
             reportError("Thread1. Connection", ne7ssh::errors());
