@@ -22,6 +22,7 @@
 #include <botan/pem.h>
 #include <botan/der_enc.h>
 #include <fstream>
+#include <sys/stat.h>
 
 #define MAX_KEYSIZE 8192
 
