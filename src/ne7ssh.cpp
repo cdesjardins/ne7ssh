@@ -36,6 +36,18 @@ void ne7ssh::destroy()
     s_ne7sshInst.reset();
 }
 
+const char* ne7ssh::getVersion(const bool shortVersion)
+{
+    if (shortVersion == true)
+    {
+        return NE7SSH_SHORT_VERSION;
+    }
+    else
+    {
+        return NE7SSH_FULL_VERSION;
+    }
+}
+
 int ne7ssh::connectWithPassword(const char* host, const short port, const char* username, const char* password, bool shell, const int timeout)
 {
     return s_ne7sshInst->connectWithPassword(host, port, username, password, shell, timeout);

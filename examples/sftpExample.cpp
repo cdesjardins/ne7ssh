@@ -32,6 +32,8 @@ int main(int argc, char* argv[])
     Ne7SftpSubsystem _sftp;
     const char* dirList;
 
+    std::cout << argv[0] << " " << ne7ssh::getVersion() << std::endl;
+
     if (argc != 4)
     {
         std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <password>" << std::endl;

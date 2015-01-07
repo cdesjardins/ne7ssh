@@ -53,6 +53,12 @@ public:
     */
     static void destroy();
 
+    /**
+    * Returns a pointer to the ne7ssh version number.
+    * This is the only function that is ok to call before the create() function!
+    * @param shortVersion specifies if the full version number should be returned or just the maj.min number.
+    */
+    static const char* getVersion(const bool shortVersion = false);
 
     /**
      * Connect to remote host using SSH2 protocol, with password authentication.

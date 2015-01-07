@@ -30,7 +30,23 @@ set(net7ssh_LIB_SRCS
     ne7ssh_impl.h)
 
 include_directories ( ${HAVE_BOTAN} )
-add_definitions(-DNE7SSH_EXPORTS)
+
+find_file(HAVE_GIT git)
+if (HAVE_GIT)
+    exec_program(
+        "git"
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ARGS "describe --dirty --always"
+        OUTPUT_VARIABLE FULL_VERSION )
+    string(FIND ${FULL_VERSION} "-" index)
+    string(SUBSTRING ${FULL_VERSION} 0 ${index} SHORT_VERSION)
+else()
+    set(FULL_VERSION "2.x")
+    set(SHORT_VERSION "2.x")
+endif()
+message(STATUS "Using version numbers: ${FULL_VERSION} and ${SHORT_VERSION}")
+
+add_definitions(-DNE7SSH_EXPORTS -DNE7SSH_FULL_VERSION="${FULL_VERSION}" -DNE7SSH_SHORT_VERSION="${SHORT_VERSION}")
 add_library(ne7ssh STATIC ${net7ssh_LIB_SRCS})
 
 set_property(TARGET ne7ssh PROPERTY CXX_STANDARD 11)

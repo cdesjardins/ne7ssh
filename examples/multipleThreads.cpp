@@ -31,8 +31,10 @@ void reportError(const std::string &tag, Ne7sshError* errors)
     } while (errmsg.size() > 0);
 }
 
-int main(/*int argc, char* argv[]*/)
+int main(int argc, char* argv[])
 {
+    std::cout << argv[0] << " " << ne7ssh::getVersion() << std::endl;
+
     ne7ssh::create();
 
     // Set SSH connection options.

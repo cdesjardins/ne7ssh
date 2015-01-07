@@ -32,6 +32,8 @@ int main(int argc, char* argv[])
     int channel1;
     int filesize = 0;
 
+    std::cout << argv[0] << " " << ne7ssh::getVersion() << std::endl;
+
     if (argc != 4)
     {
         std::cerr << "Error: Three arguments required: " << argv[0] << " <hostname> <username> <password>" << std::endl;

@@ -10,8 +10,10 @@
 #include <ne7ssh.h>
 #include <iostream>
 #include <sstream>
+
 int main(int argc, char* argv[])
 {
+    std::cout << argv[0] << " " << ne7ssh::getVersion() << std::endl;
     if (argc != 4)
     {
         std::cerr << "Error: Three arguments required: " << argv[0] << " [rsa|dsa] <emailaddr> <keysize>" << std::endl;

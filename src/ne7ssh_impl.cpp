@@ -5,7 +5,7 @@
 using namespace Botan;
 using namespace std;
 
-const char* ne7ssh_impl::SSH_VERSION = "SSH-2.0-NetSieben_1.3.2";
+const char* ne7ssh_impl::SSH_VERSION = "SSH-2.0-NetSieben_" NE7SSH_SHORT_VERSION;
 Ne7sshError* ne7ssh_impl::s_errs = NULL;
 
 #ifdef _DEMO_BUILD
