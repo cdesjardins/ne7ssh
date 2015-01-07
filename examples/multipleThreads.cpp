@@ -48,6 +48,8 @@ int main(/*int argc, char* argv[]*/)
     t2.join();
     t3.join();
     t4.join();
+
+    ne7ssh::destroy();
     return EXIT_SUCCESS;
 }
 

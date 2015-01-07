@@ -39,26 +39,20 @@ class ne7ssh_impl;
 */
 class SSH_EXPORT ne7ssh
 {
-private:
-
-    static std::shared_ptr<ne7ssh_impl> s_ne7sshInst;
-
-    /**
-    * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.
-    * Becuase this class is a singleton, you cannot copy it or assign it.
-    */
-    ne7ssh();
-    ne7ssh(const ne7ssh&);
-    ne7ssh& operator=(const ne7ssh&);
-
 public:
+    /**
+    * Create the SSH working environment.
+    * This funciton must only be called once during application initialization.
+    */
 
     static void create();
 
     /**
-     * Destructor.
-     */
-    ~ne7ssh();
+    * Destroy the SSH working environment.
+    * This funciton must only be called once during application shutdown.
+    */
+    static void destroy();
+
 
     /**
      * Connect to remote host using SSH2 protocol, with password authentication.
@@ -179,6 +173,18 @@ public:
      * @return the Error collection
      */
     static Ne7sshError* errors();
+
+private:
+
+    static std::shared_ptr<ne7ssh_impl> s_ne7sshInst;
+
+    /**
+    * Default constructor. Used to allocate required memory, as well as initializing cryptographic routines.
+    * Becuase this class is a singleton, you cannot copy it or assign it.
+    */
+    ne7ssh();
+    ne7ssh(const ne7ssh&);
+    ne7ssh& operator=(const ne7ssh&);
 };
 
 class Ne7sshSftp;

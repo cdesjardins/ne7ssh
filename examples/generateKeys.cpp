@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
             }
         } while (errmsg.size() > 0);
     }
-
+    ne7ssh::destroy();
     return EXIT_SUCCESS;
 }
 

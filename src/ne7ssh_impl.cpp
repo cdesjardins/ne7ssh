@@ -34,22 +34,13 @@ std::shared_ptr<ne7ssh_impl> ne7ssh_impl::create()
     return ret;
 }
 
-ne7ssh_impl::ne7ssh_impl()
+void ne7ssh_impl::destroy()
 {
-    s_errs = new Ne7sshError();
-    _init.reset(new LibraryInitializer("thread_safe"));
-    ne7ssh_impl::s_running = true;
-}
-
-ne7ssh_impl::~ne7ssh_impl()
-{
-    uint32 i;
-
     ne7ssh_impl::s_running = false;
     try
     {
         std::unique_lock<std::recursive_mutex> lock(s_mutex);
-        for (i = 0; i < _connections.size(); i++)
+        for (uint32 i = 0; i < _connections.size(); i++)
         {
             close(i);
         }
@@ -59,7 +50,6 @@ ne7ssh_impl::~ne7ssh_impl()
         s_errs->push(-1, "Unable to get lock %s", ex.what());
     }
     _selectThread.join();
-
     _connections.clear();
 
     ne7ssh_impl::PREFERED_CIPHER.clear();
@@ -70,6 +60,17 @@ ne7ssh_impl::~ne7ssh_impl()
         s_errs = 0;
     }
     _init.reset();
+}
+
+ne7ssh_impl::ne7ssh_impl()
+{
+    s_errs = new Ne7sshError();
+    _init.reset(new LibraryInitializer("thread_safe"));
+    ne7ssh_impl::s_running = true;
+}
+
+ne7ssh_impl::~ne7ssh_impl()
+{
 }
 
 void ne7ssh_impl::selectThread(std::shared_ptr<ne7ssh_impl> ssh)

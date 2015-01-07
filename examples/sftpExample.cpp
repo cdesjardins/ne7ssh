@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
         reportError("chmod", ne7ssh::errors());
         return EXIT_FAILURE;
     }
-
+    ne7ssh::destroy();
     return EXIT_SUCCESS;
 }
 

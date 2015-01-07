@@ -115,7 +115,7 @@ public:
     static std::string PREFERED_MAC;
 
     static std::shared_ptr<ne7ssh_impl> create();
-
+    void destroy();
     /**
     * Destructor.
     */

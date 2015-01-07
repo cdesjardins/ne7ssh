@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
     }
     // Terminate connection by sending "exit" command.
     ne7ssh::send("exit\n", channel1);
-
+    ne7ssh::destroy();
     return EXIT_SUCCESS;
 }
 

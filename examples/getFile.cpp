@@ -71,6 +71,7 @@ int main(int argc, char* argv[])
     // Close the files.
     file.close();
 
+    ne7ssh::destroy();
     return EXIT_SUCCESS;
 }
 
