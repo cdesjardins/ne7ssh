@@ -21,7 +21,7 @@
 #include "ne7ssh_session.h"
 #include "ne7ssh_channel.h"
 #include "ne7ssh_keys.h"
-#include "crypt.h"
+#include "ne7ssh_crypt.h"
 #include "ne7ssh_types.h"
 #include "ne7ssh_string.h"
 #include "ne7ssh_sftp.h"

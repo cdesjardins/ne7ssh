@@ -16,7 +16,7 @@
 
 #include "ne7ssh_keys.h"
 #include "ne7ssh.h"
-#include "crypt.h"
+#include "ne7ssh_crypt.h"
 #include <botan/base64.h>
 #include <botan/look_pk.h>
 #include <cstdio>

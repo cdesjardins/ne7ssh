@@ -19,7 +19,7 @@
 #endif
 
 #include <botan/libstate.h>
-#include "crypt.h"
+#include "ne7ssh_crypt.h"
 #include "ne7ssh_session.h"
 #include "ne7ssh.h"
 #include "ne7ssh_rng.h"

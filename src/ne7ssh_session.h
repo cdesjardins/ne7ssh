@@ -19,7 +19,7 @@
 
 #include "ne7ssh_types.h"
 #include "ne7ssh_transport.h"
-#include "crypt.h"
+#include "ne7ssh_crypt.h"
 
 /**
 @author Andrew Useckas

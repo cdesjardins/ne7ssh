@@ -20,9 +20,6 @@
 #include <memory>
 #include <botan/auto_rng.h>
 
-/**
-@author Chris Desjardins
-*/
 class ne7ssh_rng : public Botan::RandomNumberGenerator
 {
 public:

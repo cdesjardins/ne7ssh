@@ -17,7 +17,7 @@
 #ifndef NE7SSH_TRANSPORT_H
 #define NE7SSH_TRANSPORT_H
 
-#include "crypt.h"
+#include "ne7ssh_crypt.h"
 #include "ne7ssh_types.h"
 #include "ne7ssh_string.h"
 
