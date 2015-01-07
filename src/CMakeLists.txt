@@ -1,7 +1,7 @@
 
 set(net7ssh_LIB_SRCS
-    crypt.cpp
-    crypt.h
+    ne7ssh_crypt.cpp
+    ne7ssh_crypt.h
     ne7ssh.cpp
     ne7ssh.h
     ne7ssh_channel.cpp
