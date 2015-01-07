@@ -45,6 +45,7 @@ WSockInitializer _wsock32_;
 #   include <netinet/in.h>
 #   include <netdb.h>
 #   include <unistd.h>
+#   include <fcntl.h>
 #endif
 
 using namespace Botan;
