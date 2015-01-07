@@ -27,6 +27,17 @@ endif()
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
 
+
+find_file(HAVE_GIT git)
+if (HAVE_GIT)
+exec_program(
+    "git"
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ARGS "describe --dirty --always"
+    OUTPUT_VARIABLE VERSION )
+message(${VERSION})
+endif()
+
 add_subdirectory ( src )
 add_subdirectory ( examples )
 
