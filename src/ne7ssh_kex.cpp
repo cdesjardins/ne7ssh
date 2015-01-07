@@ -17,7 +17,6 @@
 #include "ne7ssh_kex.h"
 #include "ne7ssh_impl.h"
 #include "ne7ssh.h"
-#include <botan/rng.h>
 
 using namespace Botan;
 
@@ -42,7 +41,7 @@ void ne7ssh_kex::constructLocalKex()
     _localKex.clear();
     _localKex.addChar(SSH2_MSG_KEXINIT);
 
-    ne7ssh_crypt::s_rng->randomize(random, 16);
+    ne7ssh_impl::s_rng->randomize(random, 16);
 
     _localKex.addBytes(random, 16);
     _localKex.addString(ne7ssh_impl::KEX_ALGORITHMS);

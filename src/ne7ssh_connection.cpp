@@ -16,8 +16,8 @@
 
 #include "ne7ssh_connection.h"
 #include "ne7ssh_kex.h"
+#include "ne7ssh_keys.h"
 #include "ne7ssh_impl.h"
-#include "ne7ssh.h"
 
 using namespace Botan;
 

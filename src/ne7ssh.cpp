@@ -14,11 +14,9 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
 
-#include "ne7ssh_string.h"
-#include "ne7ssh_connection.h"
-#include "ne7ssh_impl.h"
 #include "ne7ssh.h"
-#include "ne7ssh_keys.h"
+#include "ne7ssh_sftp.h"
+#include "ne7ssh_impl.h"
 
 std::shared_ptr<ne7ssh_impl> ne7ssh::s_ne7sshInst;
 

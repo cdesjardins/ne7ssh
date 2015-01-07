@@ -17,17 +17,9 @@
 #ifndef NE7SSH_TYPES_H
 #define NE7SSH_TYPES_H
 
+#include <cstdint>
+
 #if defined(WIN32) || defined(__MINGW32)
-typedef int int32_t;
-typedef long long int64_t;
-typedef short int16_t;
-typedef signed char int8_t;
-
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
-typedef unsigned short uint16_t;
-typedef unsigned char uint8_t;
-
 #   if defined(_WINDLL) || defined(_USRDLL) || defined(_CONSOLE) || defined(_WINDOWS)
 #       ifdef NE7SSH_EXPORTS
 #        define SSH_EXPORT __declspec(dllexport)
@@ -42,7 +34,6 @@ typedef unsigned char uint8_t;
 #       define SSH_EXPORT
 #   endif
 #else
-#  include <inttypes.h>
 #  define SSH_EXPORT
 #endif
 

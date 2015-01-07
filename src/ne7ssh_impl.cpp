@@ -1,12 +1,34 @@
+/***************************************************************************
+*   Copyright (C) 2005-2014 by NetSieben Technologies INC                 *
+*   Author: Andrew Useckas                                                *
+*   Email: andrew@netsieben.com                                           *
+*                                                                         *
+*   Updated by Chris Desjardins cjd@chrisd.info                           *
+*                                                                         *
+*   This program may be distributed under the terms of the Q Public       *
+*   License as defined by Trolltech AS of Norway and appearing in the     *
+*   file LICENSE.QPL included in the packaging of this file.              *
+*                                                                         *
+*   This program is distributed in the hope that it will be useful,       *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
+***************************************************************************/
+
 #include "ne7ssh_impl.h"
-#include <botan/init.h>
 #include "ne7ssh_connection.h"
+#include "ne7ssh_rng.h"
+#include "ne7ssh_keys.h"
+#include <botan/init.h>
+#if defined(WIN32) || defined(__MINGW32__)
+#   include <winsock.h>
+#endif
 
 using namespace Botan;
 using namespace std;
 
 const char* ne7ssh_impl::SSH_VERSION = "SSH-2.0-NetSieben_" NE7SSH_SHORT_VERSION;
 Ne7sshError* ne7ssh_impl::s_errs = NULL;
+std::unique_ptr<RandomNumberGenerator> ne7ssh_impl::s_rng;
 
 #ifdef _DEMO_BUILD
 const char* ne7ssh_impl::MAC_ALGORITHMS = "none";
@@ -31,6 +53,11 @@ std::shared_ptr<ne7ssh_impl> ne7ssh_impl::create()
 {
     std::shared_ptr<ne7ssh_impl> ret(new ne7ssh_impl());
     ret->_selectThread = std::thread(&ne7ssh_impl::selectThread, ret);
+    if (s_rng == NULL)
+    {
+        s_rng.reset(new ne7ssh_rng());
+    }
+
     return ret;
 }
 

@@ -17,14 +17,9 @@
 #ifndef NE7SSH_IMPL_H
 #define NE7SSH_IMPL_H
 
-#include <botan/build.h>
-
-#include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
 
-#include <stdlib.h>
-#include <string>
-#include <fcntl.h>
+#include <botan/rng.h>
 #include <thread>
 #include <memory>
 
@@ -113,6 +108,7 @@ public:
     static const char* COMPRESSION_ALGORITHMS;
     static std::string PREFERED_CIPHER;
     static std::string PREFERED_MAC;
+    static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;
 
     static std::shared_ptr<ne7ssh_impl> create();
     void destroy();

@@ -17,14 +17,15 @@
 #ifndef NE7SSH_TRANSPORT_H
 #define NE7SSH_TRANSPORT_H
 
-#include "ne7ssh_crypt.h"
-#include "ne7ssh_types.h"
-#include "ne7ssh_string.h"
 
+
+#include "ne7ssh_types.h"
+#include <botan/secmem.h>
 #if defined(WIN32) || defined(__MINGW32__)
 #   include <winsock.h>
 #endif
 #include <sys/types.h>
+#include <memory>
 
 //#define MAX_PACKET_LEN 35000
 #define MAX_PACKET_LEN 34816

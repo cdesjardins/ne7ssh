@@ -17,14 +17,11 @@
 #ifndef CRYPT_H
 #define CRYPT_H
 
-#include <botan/dl_group.h>
+#include "ne7ssh_string.h"
+
 #include <botan/dh.h>
-#include <botan/pubkey.h>
-#include <botan/lookup.h>
 #include <botan/dsa.h>
 #include <botan/rsa.h>
-#include <botan/look_pk.h>
-#include <botan/pubkey.h>
 
 // #if defined(BOTAN_EXT_COMPRESSOR_ZLIB)
 //   #include <botan/zlib.h>
@@ -32,11 +29,8 @@
 //   #error "Zlib support is not compiled into Botan"
 // #endif
 
-#include <botan/cbc.h>
 #include <botan/hmac.h>
 #include <memory>
-#include "ne7ssh_types.h"
-#include "ne7ssh_string.h"
 
 class ne7ssh_session;
 
@@ -159,7 +153,6 @@ private:
     size_t max_keylength_of(const std::string& name);
 
 public:
-    static std::unique_ptr<Botan::RandomNumberGenerator> s_rng;
 
     /**
      * ne7ssh_crypt class constructor.

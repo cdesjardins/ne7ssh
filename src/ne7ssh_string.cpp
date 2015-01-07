@@ -16,7 +16,6 @@
 
 #include "ne7ssh_string.h"
 #include "ne7ssh.h"
-#include <cstdio>
 #if !defined(WIN32) && !defined(__MINGW32__)
 #   include <arpa/inet.h>
 #else

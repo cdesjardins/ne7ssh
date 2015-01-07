@@ -16,7 +16,6 @@
 
 #include "ne7ssh_sftp_packet.h"
 #include "ne7ssh_impl.h"
-#include "ne7ssh.h"
 
 using namespace Botan;
 

@@ -15,17 +15,13 @@
 #ifndef NE7SSH_ERROR_H
 #define NE7SSH_ERROR_H
 
-#include <stdlib.h>
+#include "ne7ssh_types.h"
 #include <mutex>
 #include <queue>
 #include <map>
 #if !defined(WIN32) && !defined(__MINGW32__)
 #   include <sys/select.h>
 #endif
-
-#define MAX_ERROR_LEN 500
-
-#include "ne7ssh_types.h"
 
 /**
     @author Andrew Useckas <andrew@netsieben.com>

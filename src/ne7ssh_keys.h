@@ -16,19 +16,13 @@
 
 #ifndef NE7SSH_KEYS_H
 #define NE7SSH_KEYS_H
-#include <memory>
-#include <botan/pubkey.h>
-#include <botan/pem.h>
-#include <botan/dsa.h>
-#include <botan/rsa.h>
-#include <botan/numthry.h>
-#include <botan/der_enc.h>
-#include <botan/ber_dec.h>
 
 #include "ne7ssh_types.h"
 #include "ne7ssh_string.h"
+#include <botan/dsa.h>
+#include <botan/rsa.h>
+#include <memory>
 
-#define MAX_KEYSIZE 8192
 
 /**
  @author Andrew Useckas <andrew@netsieben.com>

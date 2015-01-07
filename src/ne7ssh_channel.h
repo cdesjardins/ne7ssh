@@ -17,9 +17,8 @@
 #ifndef NE7SSH_CHANNEL_H
 #define NE7SSH_CHANNEL_H
 
-#include "ne7ssh_types.h"
 #include "ne7ssh_string.h"
-
+#include <memory>
 class ne7ssh_session;
 
 /**

@@ -17,7 +17,6 @@
 #ifndef NE7SSH_SESSION_H
 #define NE7SSH_SESSION_H
 
-#include "ne7ssh_types.h"
 #include "ne7ssh_transport.h"
 #include "ne7ssh_crypt.h"
 

@@ -14,8 +14,8 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
 
-#include "ne7ssh_transport.h"
 #include "ne7ssh_channel.h"
+#include "ne7ssh_transport.h"
 #include "ne7ssh_session.h"
 #include "ne7ssh_impl.h"
 #include "ne7ssh.h"

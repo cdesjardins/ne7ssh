@@ -17,10 +17,8 @@
 #ifndef NE7SSH_KEX_H
 #define NE7SSH_KEX_H
 
-#include "ne7ssh_types.h"
 #include "ne7ssh_session.h"
 #include "ne7ssh_string.h"
-#include "ne7ssh_transport.h"
 
 /**
 @author Andrew Useckas

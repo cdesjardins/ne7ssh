@@ -15,12 +15,12 @@
 #include <botan/secmem.h>
 #include "ne7ssh_error.h"
 #include <string.h>
-#include <cstdio>
-#include "stdarg.h"
-#include "ne7ssh.h"
+#include <stdarg.h>
 
 using namespace Botan;
 std::recursive_mutex Ne7sshError::_mutex;
+
+#define MAX_ERROR_LEN 500
 
 Ne7sshError::Ne7sshError()
 {

@@ -26,7 +26,6 @@
 #   error Unsupported Botan Version
 #endif
 
-
 #include "ne7ssh_types.h"
 #include "ne7ssh_error.h"
 #include <memory>
