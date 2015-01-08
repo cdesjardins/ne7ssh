@@ -867,7 +867,6 @@ bool ne7ssh_crypt::decryptPacket(Botan::SecureVector<Botan::byte> &decrypted, Bo
 
     _decrypt->process_msg(packet.begin(), len);
     decrypted = _decrypt->read_all(_decrypt->message_count() - 1);
-
     return true;
 }
 

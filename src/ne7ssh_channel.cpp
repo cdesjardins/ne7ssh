@@ -214,7 +214,7 @@ void ne7ssh_channel::sendAdjustWindow()
 
     transport->sendPacket(packet.value());
 }
-
+#include <iostream>
 bool ne7ssh_channel::handleData(Botan::SecureVector<Botan::byte>& packet)
 {
     ne7ssh_string handleData(packet, 0);

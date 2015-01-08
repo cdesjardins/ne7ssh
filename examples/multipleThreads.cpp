@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
     ne7ssh::create();
 
     // Set SSH connection options.
-    ne7ssh::setOptions("aes128-cbc", "hmac-md5");
+    ne7ssh::setOptions("aes128-cbc", "hmac-sha1");
 
     std::thread t1 = std::thread(&thread_proc, 0, argv[1], argv[2], argv[3]);
     std::thread t2 = std::thread(&thread_proc, 1, argv[1], argv[2], argv[3]);
@@ -78,7 +78,7 @@ void* thread_proc(int third, char* hostname, char* username, char* password)
         }
 
         // Wait for bash prompt, or die in 5 seconds.
-        if (!ne7ssh::waitFor(channel1, " $", 5))
+        if (!ne7ssh::waitFor(channel1, "$", 5))
         {
             reportError("Waiting for remote", ne7ssh::errors());
             ne7ssh::close(channel1);
@@ -94,7 +94,7 @@ void* thread_proc(int third, char* hostname, char* username, char* password)
         }
 
         // Wait for bash prompt, or die in 5 seconds
-        if (!ne7ssh::waitFor(channel1, " $", 5))
+        if (!ne7ssh::waitFor(channel1, "$", 5))
         {
             reportError("Waiting for remote site", ne7ssh::errors());
             ne7ssh::close(channel1);

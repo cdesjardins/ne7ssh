@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     }
 
     // Wait for bash prompt, or die in 5 seconds.
-    if (!ne7ssh::waitFor(channel1, " $", 5))
+    if (!ne7ssh::waitFor(channel1, "$", 5))
     {
         reportError("Wait", ne7ssh::errors());
         ne7ssh::close(channel1);
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
     }
 
     // Wait for bash prompt, or die in 5 seconds
-    if (!ne7ssh::waitFor(channel1, " $", 5))
+    if (!ne7ssh::waitFor(channel1, "$", 5))
     {
         reportError("Wait for ps", ne7ssh::errors());
         ne7ssh::close(channel1);
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
     }
 
     // Wait for bash prompt, or die in 5 seconds
-    if (!ne7ssh::waitFor(channel1, " $", 5))
+    if (!ne7ssh::waitFor(channel1, "$", 5))
     {
         reportError("Wait for netstat", ne7ssh::errors());
         ne7ssh::close(channel1);
@@ -120,6 +120,7 @@ int main(int argc, char* argv[])
     // Terminate connection by sending "exit" command.
     ne7ssh::send("exit\n", channel1);
     ne7ssh::destroy();
+
     return EXIT_SUCCESS;
 }
 

@@ -492,7 +492,6 @@ bool ne7ssh_impl::waitFor(int channel, const char* str, uint32 timeSec)
     const char* buffer;
     size_t len = 0, carretLen = 0, str_len = 0, prevLen = 0;
     time_t cutoff = 0;
-    bool forever = true;
 
     if (timeSec)
     {
@@ -507,7 +506,7 @@ bool ne7ssh_impl::waitFor(int channel, const char* str, uint32 timeSec)
 
     str_len = strlen(str);
 
-    while (forever)
+    while (s_running)
     {
         try
         {
