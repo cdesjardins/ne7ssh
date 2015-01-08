@@ -14,7 +14,7 @@
 #include <ne7ssh.h>
 #include <iostream>
 #include <string>
-#include <thread>
+
 void reportError(const std::string &tag, Ne7sshError* errors)
 {
     std::string errmsg;
@@ -76,7 +76,6 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     // Fetch recieved data.
     result = ne7ssh::read(channel1);
 

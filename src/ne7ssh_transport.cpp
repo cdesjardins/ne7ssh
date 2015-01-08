@@ -271,8 +271,8 @@ bool ne7ssh_transport::send(Botan::SecureVector<Botan::byte>& buffer)
 
     return true;
 }
-#include <iostream>
-bool ne7ssh_transport::receive(Botan::SecureVector<Botan::byte>& buffer, bool append)
+
+bool ne7ssh_transport::receive(Botan::SecureVector<Botan::byte>& buffer)
 {
     Botan::byte in_buffer[MAX_PACKET_LEN];
     int len = 0;
@@ -300,19 +300,7 @@ bool ne7ssh_transport::receive(Botan::SecureVector<Botan::byte>& buffer, bool ap
         return false;
     }
 
-    if (append)
-    {
-        buffer += SecureVector<Botan::byte>(in_buffer, len);
-    }
-    else
-    {
-        if (buffer.empty() == false)
-        {
-            std::cout << "clear " << buffer.size() << std::endl;
-        }
-        buffer.clear();
-        buffer = SecureVector<Botan::byte>(in_buffer, len);
-    }
+    buffer += SecureVector<Botan::byte>(in_buffer, len);
 
     return true;
 }
@@ -419,7 +407,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
         {
             return 0;
         }
-        if (!receive(_in, true))
+        if (!receive(_in))
         {
             return -1;
         }
@@ -443,7 +431,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
         {
             while (_in.size() < 4)
             {
-                if (!receive(_in, true))
+                if (!receive(_in))
                 {
                     return -1;
                 }
@@ -452,7 +440,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
             cryptoLen = ntohl(*((int*)_in.begin())) + sizeof(uint32);
             while (_in.size() < cryptoLen)
             {
-                if (!receive(_in, true))
+                if (!receive(_in))
                 {
                     return -1;
                 }
@@ -469,7 +457,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
     {
         while ((cryptoLen + crypto->getMacInLen()) > _in.size())
         {
-            if (!receive(_in, true))
+            if (!receive(_in))
             {
                 return -1;
             }

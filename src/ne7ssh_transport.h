@@ -92,10 +92,9 @@ public:
     /**
      * Reads data from the socket.
      * @param buffer The data will be placed here.
-     * @param append If set to true, received data will be appended to the buffer, instead of overwriting it.
      * @return True if data successfuly read, otherwise false is returned.
      */
-    bool receive(Botan::SecureVector<Botan::byte>& buffer, bool append = false);
+    bool receive(Botan::SecureVector<Botan::byte>& buffer);
 
     /**
      * Writes a buffer to the socket.
