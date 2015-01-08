@@ -365,115 +365,109 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     return true;
 }
 #include <iostream>
+
+class ne7ssh_packet {
+public:
+    ne7ssh_packet(SecureVector<Botan::byte> *encryptedPacket)
+        : _buffer(encryptedPacket)
+    {
+
+    }
+
+    ne7ssh_packet& operator=(SecureVector<Botan::byte> *encryptedPacket)
+    {
+        _buffer = encryptedPacket;
+        return *this;
+    }
+
+    int32 packetLength()
+    {
+        int32 ret = 0;
+        if (_buffer->size() > 4)
+        {
+            ret = ntohl(*((uint32*)_buffer->begin()));
+        }
+        return ret;
+    }
+
+    int32 cryptoLength()
+    {
+        int32 ret = packetLength();
+        if (ret > 0)
+        {
+            ret += sizeof(uint32);
+        }
+        return ret;
+    }
+
+    Botan::byte getCommand()
+    {
+        Botan::byte ret = 0;
+        if (_buffer->size() > 5)
+        {
+            ret = *(_buffer->begin() + 5);
+        }
+        return ret;
+    }
+
+private:
+    SecureVector<Botan::byte>* _buffer;
+};
+
 short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
 {
     std::shared_ptr<ne7ssh_crypt> crypto = _session->_crypto;
     Botan::byte cmd;
-    SecureVector<Botan::byte> tmpVar, decrypted, uncommpressed, ourMac, hMac;
-    uint32 len, cryptoLen;
-    bool havePacket = false;
+    SecureVector<Botan::byte> decrypted;
+    ne7ssh_packet packet(&_in);
+    uint32 cryptoLen = 0;
+    int macLen = 0;
 
-    tmpVar = _in;
-
-    if (!tmpVar.empty())
+    if (bufferOnly == false)
     {
-        if (crypto->isInited())
+        size_t size = 4;
+        if (crypto->isInited() == true)
         {
-            if (_in.size() > crypto->getDecryptBlock())
-            {
-                if (_in.size() < crypto->getDecryptBlock())
-                {
-                    std::cout << "bug 1" << std::endl;
-                }
-
-                crypto->decryptPacket(tmpVar, _in, crypto->getDecryptBlock());
-            }
-            else
-            {
-                tmpVar.clear();
-            }
+            size = crypto->getDecryptBlock();
         }
-        cmd = *(tmpVar.begin() + 5);
-
-        if (cmd > 0 && cmd < 0xff)
+        while (_in.size() < size)
         {
-            havePacket = true;
-        }
-    }
-
-    if (!havePacket)
-    {
-        if (bufferOnly)
-        {
-            return 0;
-        }
-        if (!receive(_in))
-        {
-            return -1;
-        }
-
-        if (crypto->isInited())
-        {
-            if (!_in.empty())
-            {
-                if (_in.size() < crypto->getDecryptBlock())
-                {
-                    std::cout << "bug 2" << std::endl;
-                }
-                crypto->decryptPacket(tmpVar, _in, crypto->getDecryptBlock());
-            }
-            else
-            {
-                tmpVar.clear();
-            }
-        }
-        else
-        {
-            while (_in.size() < 4)
-            {
-                if (!receive(_in))
-                {
-                    return -1;
-                }
-            }
-
-            cryptoLen = ntohl(*((int*)_in.begin())) + sizeof(uint32);
-            while (_in.size() < cryptoLen)
-            {
-                if (!receive(_in))
-                {
-                    return -1;
-                }
-            }
-
-            tmpVar = _in;
-        }
-    }
-
-    len = ntohl(*((int*)tmpVar.begin()));
-    cryptoLen = len + sizeof(uint32);
-    decrypted = tmpVar;
-    if (crypto->isInited())
-    {
-        while ((cryptoLen + crypto->getMacInLen()) > _in.size())
-        {
-            if (!receive(_in))
+            if (receive(_in) == false)
             {
                 return -1;
             }
         }
+    }
+    if ((crypto->isInited() == true) && (_in.size() >= crypto->getDecryptBlock()))
+    {
+        crypto->decryptPacket(decrypted, _in, crypto->getDecryptBlock());
+        packet = &decrypted;
+        macLen = crypto->getMacInLen();
+    }
+    cryptoLen = packet.cryptoLength();
+    if ((bufferOnly == false) || ((crypto->isInited() == true) && (packet.getCommand() > 0) && (packet.getCommand() < 0xff)))
+    {
+        while ((cryptoLen + macLen) > _in.size())
+        {
+            if (receive(_in) == false)
+            {
+                return -1;
+            }
+        }
+    }
+
+    if (crypto->isInited() == true)
+    {
         if (cryptoLen > crypto->getDecryptBlock())
         {
+            SecureVector<Botan::byte> tmpVar;
             tmpVar = SecureVector<Botan::byte>(_in.begin() + crypto->getDecryptBlock(), (cryptoLen - crypto->getDecryptBlock()));
-            if (!_in.empty())
-            {
-                //std::cout << "decrypt onto myself: " << cryptoLen << " " << tmpVar.size() << std::endl;
-                crypto->decryptPacket(tmpVar, tmpVar, tmpVar.size());
-            }
+            crypto->decryptPacket(tmpVar, tmpVar, tmpVar.size());
             decrypted += tmpVar;
         }
-        if (crypto->getMacInLen())
+        if (crypto->getMacInLen() && (_in.size() > 0) && (_in.size() >= (cryptoLen + crypto->getMacInLen())))
         {
+            SecureVector<Botan::byte> ourMac, hMac;
             crypto->computeMac(ourMac, decrypted, _rSeq);
             hMac = SecureVector<Botan::byte>(_in.begin() + cryptoLen, crypto->getMacInLen());
             if (hMac != ourMac)
@@ -483,46 +477,37 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
             }
             cryptoLen += crypto->getMacInLen();
         }
-
-// No Zlib support right now
-/*    if (crypto->isCompressed())
-    {
-      tmpVar.set (decrypted.begin() + 5, len);
-      crypto->decompressData (tmpVar);
-      uncommpressed.set (decrypted.begin(), 4);
-      uncommpressed.append (tmpVar);
-      decrypted.set (uncommpressed);
-    }*/
-    }
-
-    if (_rSeq == MAX_SEQUENCE)
-    {
-        _seq = 0;
     }
     else
     {
-        _rSeq++;
+        decrypted = _in;
     }
-    cmd = *(decrypted.begin() + 5);
-
-    if (command == cmd || !command)
+    if (decrypted.empty() == false)
     {
-        _inBuffer = decrypted;
-        if (_in.size() == cryptoLen)
+        _rSeq++;
+        cmd = packet.getCommand();
+        if ((command == cmd) || (command == 0))
         {
-            _in.clear();
+            _inBuffer = decrypted;
+            if (_in.size() == cryptoLen)
+            {
+                _in.clear();
+            }
+            else
+            {
+                SecureVector<Botan::byte> tmpVar;
+                tmpVar.swap(_in);
+                _in = SecureVector<Botan::byte>(tmpVar.begin() + cryptoLen, tmpVar.size() - cryptoLen);
+            }
+            return cmd;
         }
         else
         {
-            tmpVar.swap(_in);
-            _in = SecureVector<Botan::byte>(tmpVar.begin() + cryptoLen, tmpVar.size() - cryptoLen);
+            return 0;
         }
-        return cmd;
     }
-    else
-    {
-        return 0;
-    }
+
+    return command;
 }
 
 uint32 ne7ssh_transport::getPacket(Botan::SecureVector<Botan::byte> &result)

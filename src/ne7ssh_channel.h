@@ -33,8 +33,8 @@ private:
     bool _shellSpawned;
 
     std::shared_ptr<ne7ssh_session> _session;
-    ne7ssh_string _inBuffer;
-    ne7ssh_string _outBuffer;
+    ne7ssh_string _chanInBuffer;
+    ne7ssh_string _chanOutBuffer;
     ne7ssh_string _delayedBuffer;
 
     /**
@@ -166,7 +166,7 @@ public:
      */
     bool data2Send()
     {
-        if (_outBuffer.length() || _delayedBuffer.length())
+        if (_chanOutBuffer.length() || _chanOutBuffer.length())
         {
             return true;
         }
@@ -203,7 +203,7 @@ public:
      */
     Botan::SecureVector<Botan::byte>& getReceived()
     {
-        return _inBuffer.value();
+        return _chanInBuffer.value();
     }
 
     /**

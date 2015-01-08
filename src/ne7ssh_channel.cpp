@@ -230,14 +230,15 @@ bool ne7ssh_channel::handleData(Botan::SecureVector<Botan::byte>& packet)
     {
         ne7ssh::errors()->push(_session->getSshChannel(), "Abnormal. End of stream detected.");
     }
-    if (_inBuffer.length())
+
+    if (_chanInBuffer.length())
     {
-        _inBuffer.chop(1);
+        _chanInBuffer.chop(1);
     }
-    _inBuffer.addVector(data);
-    if (_inBuffer.length())
+    _chanInBuffer.addVector(data);
+    if (_chanInBuffer.length())
     {
-        _inBuffer.addChar(0x00);
+        _chanInBuffer.addChar(0x00);
     }
     _windowRecv -= data.size();
     if (_windowRecv == 0)
@@ -489,7 +490,7 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
             dataStart -= 64;
         }
         dataBuff = SecureVector<Botan::byte>(outBuff.begin() + dataStart, maxBytes - 64);
-        _outBuffer.addVector(dataBuff);
+        _chanOutBuffer.addVector(dataBuff);
         len -= maxBytes - 64;
     }
     if (len)
@@ -500,8 +501,8 @@ void ne7ssh_channel::write(Botan::SecureVector<Botan::byte>& data)
             dataStart -= 64;
         }
         dataBuff = SecureVector<Botan::byte>(outBuff.begin() + dataStart, len);
-        _outBuffer.addVector(dataBuff);
-        _inBuffer.clear();
+        _chanOutBuffer.addVector(dataBuff);
+        //_inBuffer.clear();
     }
 }
 
@@ -511,30 +512,30 @@ void ne7ssh_channel::sendAll()
     SecureVector<Botan::byte> tmpVar;
     ne7ssh_string packet;
 
-    if (!_outBuffer.length() && _delayedBuffer.length())
+    if (!_chanOutBuffer.length() && _delayedBuffer.length())
     {
         tmpVar.swap(_delayedBuffer.value());
         _delayedBuffer.clear();
         write(tmpVar);
     }
-    if (!_outBuffer.length())
+    if (!_chanOutBuffer.length())
     {
         return;
     }
     packet.clear();
     packet.addChar(SSH2_MSG_CHANNEL_DATA);
     packet.addInt(_session->getSendChannel());
-    packet.addVectorField(_outBuffer.value());
+    packet.addVectorField(_chanOutBuffer.value());
 
-    _windowSend -= _outBuffer.length();
-    _inBuffer.clear();
+    _windowSend -= _chanOutBuffer.length();
+    //_inBuffer.clear();
     if (!transport->sendPacket(packet.value()))
     {
         return;
     }
     else
     {
-        _outBuffer.clear();
+        _chanOutBuffer.clear();
     }
 }
 
