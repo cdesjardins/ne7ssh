@@ -48,7 +48,6 @@ std::string ne7ssh_impl::PREFERED_MAC;
 std::recursive_mutex ne7ssh_impl::s_mutex;
 volatile bool ne7ssh_impl::s_running = false;
 
-
 std::shared_ptr<ne7ssh_impl> ne7ssh_impl::create()
 {
     std::shared_ptr<ne7ssh_impl> ret(new ne7ssh_impl());
@@ -728,28 +727,29 @@ bool ne7ssh_impl::generateKeyPair(const char* type, const char* fqdn, const char
 
     switch (keyAlgo)
     {
-    case DSA:
-        if (!keySize)
-        {
-            return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName);
-        }
-        else
-        {
-            return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
-        }
+        case DSA:
+            if (!keySize)
+            {
+                return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName);
+            }
+            else
+            {
+                return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
+            }
 
-    case RSA:
-        if (!keySize)
-        {
-            return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName);
-        }
-        else
-        {
-            return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
-        }
+        case RSA:
+            if (!keySize)
+            {
+                return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName);
+            }
+            else
+            {
+                return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
+            }
 
-    default:
-        s_errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
+        default:
+            s_errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
     }
     return false;
 }
+

@@ -58,7 +58,7 @@ class ne7ssh_connection;
 /** definitions for Botan */
 namespace Botan
 {
-    class LibraryInitializer;
+class LibraryInitializer;
 }
 
 class Ne7SftpSubsystem;

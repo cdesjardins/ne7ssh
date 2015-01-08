@@ -17,8 +17,6 @@
 #ifndef NE7SSH_TRANSPORT_H
 #define NE7SSH_TRANSPORT_H
 
-
-
 #include "ne7ssh_types.h"
 #include <botan/secmem.h>
 #if defined(WIN32) || defined(__MINGW32__)

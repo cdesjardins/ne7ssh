@@ -364,17 +364,18 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     }
     return true;
 }
+
 #include <iostream>
 
-class ne7ssh_packet {
+class ne7ssh_packet
+{
 public:
-    ne7ssh_packet(SecureVector<Botan::byte> *encryptedPacket)
+    ne7ssh_packet(SecureVector<Botan::byte>* encryptedPacket)
         : _buffer(encryptedPacket)
     {
-
     }
 
-    ne7ssh_packet& operator=(SecureVector<Botan::byte> *encryptedPacket)
+    ne7ssh_packet& operator=(SecureVector<Botan::byte>* encryptedPacket)
     {
         _buffer = encryptedPacket;
         return *this;

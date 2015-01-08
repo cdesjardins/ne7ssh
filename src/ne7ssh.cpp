@@ -115,7 +115,7 @@ Ne7SftpSubsystem::Ne7SftpSubsystem () : _inited(false), _sftp(0)
 {
 }
 
-Ne7SftpSubsystem::Ne7SftpSubsystem (std::shared_ptr<Ne7sshSftp> sftp) 
+Ne7SftpSubsystem::Ne7SftpSubsystem (std::shared_ptr<Ne7sshSftp> sftp)
     : _inited(true),
     _sftp(sftp)
 {
