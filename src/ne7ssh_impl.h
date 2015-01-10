@@ -58,7 +58,7 @@ class ne7ssh_connection;
 /** definitions for Botan */
 namespace Botan
 {
-    class LibraryInitializer;
+class LibraryInitializer;
 }
 
 class Ne7SftpSubsystem;
@@ -180,13 +180,6 @@ public:
     * @return Returns string read from receiver buffer or 0 if buffer is empty.
     */
     const char* read(int channel);
-
-    /**
-    * Reads all data from receiving buffer on specified channel. Returns pointer to void. Together with getReceivedSize and sendCmd can be used to read remote files.
-    * @param channel Channel to read data on.
-    * @return Returns pointer to the start of binary data or 0 if nothing received.
-    */
-    void* readBinary(int channel);
 
     /**
     * Returns the size of all data read. Used to read buffer passed 0x0.

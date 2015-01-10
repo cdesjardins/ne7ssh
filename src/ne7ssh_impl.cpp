@@ -48,7 +48,6 @@ std::string ne7ssh_impl::PREFERED_MAC;
 std::recursive_mutex ne7ssh_impl::s_mutex;
 volatile bool ne7ssh_impl::s_running = false;
 
-
 std::shared_ptr<ne7ssh_impl> ne7ssh_impl::create()
 {
     std::shared_ptr<ne7ssh_impl> ret(new ne7ssh_impl());
@@ -590,40 +589,6 @@ const char* ne7ssh_impl::read(int channel)
     return NULL;
 }
 
-void* ne7ssh_impl::readBinary(int channel)
-{
-    uint32 i;
-    SecureVector<Botan::byte> data;
-
-    if (channel == -1)
-    {
-        s_errs->push(-1, "Bad channel: %i specified for reading.", channel);
-        return NULL;
-    }
-    try
-    {
-        std::unique_lock<std::recursive_mutex> lock(s_mutex, std::defer_lock);
-        for (i = 0; i < _connections.size(); i++)
-        {
-            if (channel == _connections[i]->getChannelNo())
-            {
-                data = _connections[i]->getReceived();
-                if (data.size())
-                {
-                    return ((void*)_connections[i]->getReceived().begin());
-                }
-            }
-        }
-    }
-    catch (const std::system_error &ex)
-    {
-        s_errs->push(-1, "Unable to get lock %s", ex.what());
-        return NULL;
-    }
-
-    return NULL;
-}
-
 int ne7ssh_impl::getReceivedSize(int channel)
 {
     uint32 i;
@@ -728,28 +693,29 @@ bool ne7ssh_impl::generateKeyPair(const char* type, const char* fqdn, const char
 
     switch (keyAlgo)
     {
-    case DSA:
-        if (!keySize)
-        {
-            return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName);
-        }
-        else
-        {
-            return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
-        }
+        case DSA:
+            if (!keySize)
+            {
+                return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName);
+            }
+            else
+            {
+                return keyPair.generateDSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
+            }
 
-    case RSA:
-        if (!keySize)
-        {
-            return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName);
-        }
-        else
-        {
-            return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
-        }
+        case RSA:
+            if (!keySize)
+            {
+                return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName);
+            }
+            else
+            {
+                return keyPair.generateRSAKeys(fqdn, privKeyFileName, pubKeyFileName, keySize);
+            }
 
-    default:
-        s_errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
+        default:
+            s_errs->push(-1, "The specfied key algorithm: %i not supported", keyAlgo);
     }
     return false;
 }
+

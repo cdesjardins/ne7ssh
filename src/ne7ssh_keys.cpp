@@ -42,6 +42,7 @@ ne7ssh_keys::ne7ssh_keys()
 ne7ssh_keys::~ne7ssh_keys()
 {
 }
+
 #include "ne7ssh_rng.h"
 bool ne7ssh_keys::generateRSAKeys(const char* fqdn, const char* privKeyFileName, const char* pubKeyFileName, uint16 keySize)
 {

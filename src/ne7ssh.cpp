@@ -76,11 +76,6 @@ const char* ne7ssh::read(int channel)
     return s_ne7sshInst->read(channel);
 }
 
-void* ne7ssh::readBinary(int channel)
-{
-    return s_ne7sshInst->readBinary(channel);
-}
-
 int ne7ssh::getReceivedSize(int channel)
 {
     return s_ne7sshInst->getReceivedSize(channel);
@@ -115,7 +110,7 @@ Ne7SftpSubsystem::Ne7SftpSubsystem () : _inited(false), _sftp(0)
 {
 }
 
-Ne7SftpSubsystem::Ne7SftpSubsystem (std::shared_ptr<Ne7sshSftp> sftp) 
+Ne7SftpSubsystem::Ne7SftpSubsystem (std::shared_ptr<Ne7sshSftp> sftp)
     : _inited(true),
     _sftp(sftp)
 {

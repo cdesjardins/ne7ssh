@@ -23,11 +23,11 @@
 using namespace Botan;
 
 Ne7sshSftp::Ne7sshSftp(std::shared_ptr<ne7ssh_session> session, std::shared_ptr<ne7ssh_channel> channel)
-    : ne7ssh_channel(session), 
-    _session(session), 
-    _timeout(30), 
-    _seq(1), 
-    _sftpCmd(0), 
+    : ne7ssh_channel(session),
+    _session(session),
+    _timeout(30),
+    _seq(1),
+    _sftpCmd(0),
     _lastError(0)
 {
     _windowRecv = channel->getRecvWindow();

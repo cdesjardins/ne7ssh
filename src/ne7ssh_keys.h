@@ -23,7 +23,6 @@
 #include <botan/rsa.h>
 #include <memory>
 
-
 /**
  @author Andrew Useckas <andrew@netsieben.com>
 */

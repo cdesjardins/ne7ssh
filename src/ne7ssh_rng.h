@@ -72,5 +72,4 @@ private:
     std::unique_ptr<Botan::RandomNumberGenerator> _rng;
 };
 
-
 #endif

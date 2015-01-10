@@ -654,17 +654,17 @@ size_t ne7ssh_crypt::max_keylength_of(const std::string& name)
 {
     Algorithm_Factory& af = global_state().algorithm_factory();
 
-    if (const BlockCipher * bc = af.prototype_block_cipher(name))
+    if (const BlockCipher* bc = af.prototype_block_cipher(name))
     {
         return bc->key_spec().maximum_keylength();
     }
 
-    if (const StreamCipher * sc = af.prototype_stream_cipher(name))
+    if (const StreamCipher* sc = af.prototype_stream_cipher(name))
     {
         return sc->key_spec().maximum_keylength();
     }
 
-    if (const MessageAuthenticationCode * mac = af.prototype_mac(name))
+    if (const MessageAuthenticationCode* mac = af.prototype_mac(name))
     {
         return mac->key_spec().maximum_keylength();
     }
