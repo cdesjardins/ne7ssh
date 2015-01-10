@@ -50,6 +50,82 @@ WSockInitializer _wsock32_;
 
 using namespace Botan;
 
+#define NE7SSH_PACKET_LENGTH_OFFS   0
+#define NE7SSH_PACKET_LENGTH_SIZE   4
+
+#define NE7SSH_PACKET_PAD_OFFS      4
+#define NE7SSH_PACKET_PAD_SIZE      1
+
+#define NE7SSH_PACKET_PAYLOAD_OFFS  5
+#define NE7SSH_PACKET_CMD_SIZE      1
+
+class ne7ssh_packet {
+public:
+    ne7ssh_packet(SecureVector<Botan::byte> *encryptedPacket)
+        : _buffer(encryptedPacket)
+    {
+
+    }
+
+    ne7ssh_packet& operator=(SecureVector<Botan::byte> *encryptedPacket)
+    {
+        _buffer = encryptedPacket;
+        return *this;
+    }
+    uint32 getPacketLength()
+    {
+        int32 ret = 0;
+        if (_buffer->size() >= NE7SSH_PACKET_LENGTH_SIZE)
+        {
+            ret = ntohl(*((uint32*)_buffer->begin()));
+        }
+        return ret;
+    }
+
+    uint32 getCryptoLength()
+    {
+        int32 ret = getPacketLength();
+        if (ret > 0)
+        {
+            ret += sizeof(uint32);
+        }
+        return ret;
+    }
+
+    Botan::byte getPadLength()
+    {
+        Botan::byte ret = 0;
+        if (_buffer->size() >= (NE7SSH_PACKET_PAD_OFFS + NE7SSH_PACKET_PAD_SIZE))
+        {
+            ret = _buffer->begin()[NE7SSH_PACKET_PAD_OFFS];
+        }
+        return ret;
+    }
+
+    Botan::byte getCommand()
+    {
+        Botan::byte ret = 0;
+        if (_buffer->size() >= (NE7SSH_PACKET_PAYLOAD_OFFS + NE7SSH_PACKET_CMD_SIZE))
+        {
+            ret = _buffer->begin()[NE7SSH_PACKET_PAYLOAD_OFFS];
+        }
+        return ret;
+    }
+
+    Botan::byte* getPayload()
+    {
+        Botan::byte* ret = NULL;
+        if (_buffer->size() > NE7SSH_PACKET_PAYLOAD_OFFS)
+        {
+            ret = _buffer->begin() + NE7SSH_PACKET_PAYLOAD_OFFS;
+        }
+        return ret;
+    }
+
+private:
+    SecureVector<Botan::byte>* _buffer;
+};
+
 ne7ssh_transport::ne7ssh_transport(std::shared_ptr<ne7ssh_session> session)
     : _seq(0),
     _rSeq(0),
@@ -364,55 +440,6 @@ bool ne7ssh_transport::sendPacket(Botan::SecureVector<Botan::byte> &buffer)
     }
     return true;
 }
-#include <iostream>
-
-class ne7ssh_packet {
-public:
-    ne7ssh_packet(SecureVector<Botan::byte> *encryptedPacket)
-        : _buffer(encryptedPacket)
-    {
-
-    }
-
-    ne7ssh_packet& operator=(SecureVector<Botan::byte> *encryptedPacket)
-    {
-        _buffer = encryptedPacket;
-        return *this;
-    }
-
-    int32 packetLength()
-    {
-        int32 ret = 0;
-        if (_buffer->size() > 4)
-        {
-            ret = ntohl(*((uint32*)_buffer->begin()));
-        }
-        return ret;
-    }
-
-    int32 cryptoLength()
-    {
-        int32 ret = packetLength();
-        if (ret > 0)
-        {
-            ret += sizeof(uint32);
-        }
-        return ret;
-    }
-
-    Botan::byte getCommand()
-    {
-        Botan::byte ret = 0;
-        if (_buffer->size() > 5)
-        {
-            ret = *(_buffer->begin() + 5);
-        }
-        return ret;
-    }
-
-private:
-    SecureVector<Botan::byte>* _buffer;
-};
 
 short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
 {
@@ -444,7 +471,7 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
         packet = &decrypted;
         macLen = crypto->getMacInLen();
     }
-    cryptoLen = packet.cryptoLength();
+    cryptoLen = packet.getCryptoLength();
     if ((bufferOnly == false) || ((crypto->isInited() == true) && (packet.getCommand() > 0) && (packet.getCommand() < 0xff)))
     {
         while ((cryptoLen + macLen) > _in.size())
@@ -513,9 +540,9 @@ short ne7ssh_transport::waitForPacket(Botan::byte command, bool bufferOnly)
 uint32 ne7ssh_transport::getPacket(Botan::SecureVector<Botan::byte> &result)
 {
     std::shared_ptr<ne7ssh_crypt> crypto = _session->_crypto;
-    SecureVector<Botan::byte> tmpVector(_inBuffer);
-    uint32 len = ntohl(*((uint32*)tmpVector.begin()));
-    Botan::byte padLen = *(tmpVector.begin() + 4);
+    ne7ssh_packet packet(&_inBuffer);
+    uint32 len = packet.getPacketLength();
+    Botan::byte padLen = packet.getPadLength();
     uint32 macLen = crypto->getMacInLen();
 
     if (_inBuffer.empty())
@@ -527,17 +554,17 @@ uint32 ne7ssh_transport::getPacket(Botan::SecureVector<Botan::byte> &result)
     if (crypto->isInited())
     {
         len += macLen;
-        if (len > tmpVector.size())
+        if (len > _inBuffer.size())
         {
             len -= macLen;
         }
     }
 
-    tmpVector += SecureVector<Botan::byte>((uint8*)"\0", 1);
-    result = SecureVector<Botan::byte>(tmpVector.begin() + 5, len);
+    _inBuffer += SecureVector<Botan::byte>((Botan::byte*)"\0", 1);
+    result = SecureVector<Botan::byte>(packet.getPayload(), len);
     crypto->decompressData(result);
 
     _inBuffer.clear();
     return padLen;
-}
 
+}
