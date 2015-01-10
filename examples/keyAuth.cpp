@@ -14,7 +14,6 @@
 #include <ne7ssh.h>
 #include <iostream>
 #include <string>
-#include <thread>
 
 void reportError(const std::string &tag, Ne7sshError* errors)
 {
@@ -53,7 +52,14 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // Wait for bash prompt, or die in 5 seconds.
+    if (!ne7ssh::waitFor(channel1, "$", 5))
+    {
+        reportError("Wait for prompt", ne7ssh::errors());
+        ne7ssh::close(channel1);
+        return EXIT_FAILURE;
+    }
+
     // Send "ls" command.
     if (!ne7ssh::send("ls -la;ls -la;ls -la /;ls -la /sbin\n", channel1))
     {
@@ -62,23 +68,25 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    std::chrono::time_point<std::chrono::system_clock> start;
-    start = std::chrono::system_clock::now();
-    do
+    // Wait for bash prompt, or die in 5 seconds
+    if (!ne7ssh::waitFor(channel1, "$", 5))
     {
-        // Fetch recieved data.
-        result = ne7ssh::read(channel1);
+        reportError("Wait for ls", ne7ssh::errors());
+        ne7ssh::close(channel1);
+        return EXIT_FAILURE;
+    }
 
-        if (result == NULL)
-        {
-            reportError("Read", ne7ssh::errors());
-        }
-        else
-        {
-            std::cout << "Received data:" << std::endl << result << std::endl;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    } while ((std::chrono::system_clock::now() - start) < std::chrono::seconds(5));
+    // Fetch recieved data.
+    result = ne7ssh::read(channel1);
+
+    if (!result)
+    {
+        reportError("Read", ne7ssh::errors());
+    }
+    else
+    {
+        std::cout << "Received data:" << std::endl << result << std::endl;
+    }
 
     // Terminate connection by sending "exit" command.
     ne7ssh::send("exit\n", channel1);
