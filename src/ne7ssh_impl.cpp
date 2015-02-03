@@ -589,40 +589,6 @@ const char* ne7ssh_impl::read(int channel)
     return NULL;
 }
 
-void* ne7ssh_impl::readBinary(int channel)
-{
-    uint32 i;
-    SecureVector<Botan::byte> data;
-
-    if (channel == -1)
-    {
-        s_errs->push(-1, "Bad channel: %i specified for reading.", channel);
-        return NULL;
-    }
-    try
-    {
-        std::unique_lock<std::recursive_mutex> lock(s_mutex, std::defer_lock);
-        for (i = 0; i < _connections.size(); i++)
-        {
-            if (channel == _connections[i]->getChannelNo())
-            {
-                data = _connections[i]->getReceived();
-                if (data.size())
-                {
-                    return ((void*)_connections[i]->getReceived().begin());
-                }
-            }
-        }
-    }
-    catch (const std::system_error &ex)
-    {
-        s_errs->push(-1, "Unable to get lock %s", ex.what());
-        return NULL;
-    }
-
-    return NULL;
-}
-
 int ne7ssh_impl::getReceivedSize(int channel)
 {
     uint32 i;

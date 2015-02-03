@@ -216,8 +216,6 @@ bool ne7ssh_connection::authWithPassword(const char* username, const char* passw
     }
     else if (cmd == SSH2_MSG_USERAUTH_BANNER)
     {
-        packet.clear();
-        packet.addString(password);
         if (!_transport->sendPacket(packet.value()))
         {
             return false;

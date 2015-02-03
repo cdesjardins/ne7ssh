@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
     std::fstream file("./test.bin", std::ios_base::out | std::ios_base::binary);
 
     // Write binary data from the receive buffer to the opened file.
-    file.write((char*)ne7ssh::readBinary(channel1), (size_t)filesize);
+    file.write((char*)ne7ssh::read(channel1), (size_t)filesize);
 
     // Close the files.
     file.close();

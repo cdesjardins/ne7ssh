@@ -124,13 +124,6 @@ public:
     SSH_EXPORT static const char* read(int channel);
 
     /**
-    * Reads all data from receiving buffer on specified channel. Returns pointer to void. Together with getReceivedSize and sendCmd can be used to read remote files.
-    * @param channel Channel to read data on.
-    * @return Returns pointer to the start of binary data or 0 if nothing received.
-    */
-    SSH_EXPORT static void* readBinary(int channel);
-
-    /**
      * Returns the size of all data read. Used to read buffer passed 0x0.
      * @param channel Channel number which buffer size to check.
      * @return Return size of the buffer, or 0x0 if receive buffer empty.
