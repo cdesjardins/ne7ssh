@@ -1,12 +1,7 @@
 ## UPDATE: 2/26/2015 - After spending quite some time with this library, I decided to use it as a rapid prototype for cppssh. All development has moved to that project.
 # https://github.com/cdesjardins/cppssh
 
-
-
-
-
-
-
+<br><br><br><br><br><br><br><br>
 
 An open letter to: 
 Andrew Useckas <andrew@netsieben.com>
