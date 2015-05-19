@@ -1,3 +1,8 @@
+# UPDATE: 2/26/2015 - After spending quite some time with this library, I decided
+# to use it as a rapid prototype for cppssh. All development has moved to that project.
+# https://github.com/cdesjardins/cppssh
+
+
 An open letter to: 
 Andrew Useckas <andrew@netsieben.com>
 Keef Aragon <keef@netsieben.com>
@@ -5,10 +10,6 @@ Keef Aragon <keef@netsieben.com>
 It seems that ne7ssh has been abandoned. I have attempted to contact
 you both, but I have as of yet not recieved any response. If you decide to
 resurrect ne7ssh, then please contact me so that we can merge and converge.
-
-UPDATE: 2/26/2015 - After spending quite some time with this library, I decided
-to use it as a rapid prototype for cppssh. All development has moved to that project.
-https://github.com/cdesjardins/cppssh
 
 Thanks - Chris D.
 
